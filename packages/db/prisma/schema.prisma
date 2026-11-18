@@ -1,0 +1,341 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrganizationRole {
+  OWNER
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum AppStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum EnvironmentName {
+  DEVELOPMENT
+  STAGING
+  PRODUCTION
+}
+
+enum ActorType {
+  USER
+  AI_AGENT
+  SYSTEM
+}
+
+enum ProposalStatus {
+  DRAFT
+  VALIDATING
+  AWAITING_APPROVAL
+  APPROVED
+  REJECTED
+  APPLIED
+  FAILED
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  DESTRUCTIVE
+}
+
+enum ApprovalDecision {
+  APPROVED
+  REJECTED
+}
+
+enum ReleaseStatus {
+  BUILDING
+  PUBLISHED
+  FAILED
+  ROLLED_BACK
+}
+
+enum PlatformTarget {
+  WEB
+  ANDROID
+  IOS
+  WINDOWS
+  MACOS
+  LINUX
+}
+
+enum ArtifactType {
+  RUNTIME_BUNDLE
+  NATIVE_BINARY
+  SOURCE_ARCHIVE
+}
+
+enum ArtifactStatus {
+  PENDING
+  BUILDING
+  READY
+  FAILED
+}
+
+enum IntegrationStatus {
+  ACTIVE
+  INACTIVE
+  ERROR
+}
+
+enum MigrationDirection {
+  UP
+  DOWN
+}
+
+model Organization {
+  id            String           @id @default(uuid())
+  name          String
+  slug          String           @unique
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  memberships   Membership[]
+  apps          App[]
+  conversations AiConversation[]
+  proposals     AiProposal[]
+  integrations  Integration[]
+  auditLogs     AuditLog[]
+}
+
+model User {
+  id           String       @id @default(uuid())
+  email        String       @unique
+  displayName  String?
+  passwordHash String?
+  status       UserStatus   @default(ACTIVE)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  memberships  Membership[]
+  auditLogs    AuditLog[]
+}
+
+model Membership {
+  id             String       @id @default(uuid())
+  organizationId String
+  userId         String
+  role           OrganizationRole
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([organizationId, role])
+}
+
+model App {
+  id              String           @id @default(uuid())
+  organizationId  String
+  slug            String
+  name            String
+  status          AppStatus        @default(DRAFT)
+  createdByUserId String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  versions        AppVersion[]
+  environments    AppEnvironment[]
+  conversations   AiConversation[]
+  proposals       AiProposal[]
+  integrations    Integration[]
+  auditLogs       AuditLog[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId, status])
+}
+
+model AppVersion {
+  id                String           @id @default(uuid())
+  appId             String
+  versionNumber     Int
+  parentVersionId   String?
+  schemaVersion     String
+  definition        Json
+  checksum          String
+  changeSummary     String?
+  createdByUserId   String
+  createdByActorType ActorType       @default(USER)
+  sourceProposalId  String?
+  createdAt         DateTime         @default(now())
+  app               App              @relation(fields: [appId], references: [id], onDelete: Cascade)
+  parent            AppVersion?      @relation("AppVersionHierarchy", fields: [parentVersionId], references: [id], onDelete: SetNull)
+  children          AppVersion[]     @relation("AppVersionHierarchy")
+  environments      AppEnvironment[]
+  releases          Release[]
+  artifacts         BuildArtifact[]
+  baseForProposals  AiProposal[]     @relation("ProposalBaseVersion")
+
+  @@unique([appId, versionNumber])
+  @@index([appId, createdAt])
+}
+
+model AppEnvironment {
+  id               String           @id @default(uuid())
+  appId            String
+  name             EnvironmentName
+  currentVersionId String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  app              App              @relation(fields: [appId], references: [id], onDelete: Cascade)
+  currentVersion   AppVersion?      @relation(fields: [currentVersionId], references: [id], onDelete: SetNull)
+
+  @@unique([appId, name])
+}
+
+model ComponentContractVersion {
+  id           String    @id @default(uuid())
+  type         String
+  version      String
+  contract     Json
+  deprecatedAt DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@unique([type, version])
+  @@index([type])
+}
+
+model SpecMigration {
+  id          String             @id @default(uuid())
+  fromVersion String
+  toVersion   String
+  direction   MigrationDirection
+  checksum    String
+  createdAt   DateTime           @default(now())
+
+  @@unique([fromVersion, toVersion, direction])
+}
+
+model AiConversation {
+  id               String       @id @default(uuid())
+  organizationId   String
+  appId            String?
+  createdByUserId  String
+  title            String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  app              App?         @relation(fields: [appId], references: [id], onDelete: SetNull)
+  proposals        AiProposal[]
+
+  @@index([organizationId, createdAt])
+}
+
+model AiProposal {
+  id                 String         @id @default(uuid())
+  organizationId     String
+  appId              String
+  conversationId     String?
+  baseVersionId      String
+  status             ProposalStatus @default(DRAFT)
+  riskLevel          RiskLevel      @default(LOW)
+  rationale          String?
+  operations         Json
+  validationResult   Json?
+  createdByUserId    String
+  createdByActorType ActorType      @default(USER)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  organization       Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  app                App            @relation(fields: [appId], references: [id], onDelete: Cascade)
+  conversation       AiConversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  baseVersion        AppVersion     @relation("ProposalBaseVersion", fields: [baseVersionId], references: [id], onDelete: Restrict)
+  approvals          Approval[]
+  auditLogs          AuditLog[]
+
+  @@index([organizationId, appId, status])
+}
+
+model Approval {
+  id             String          @id @default(uuid())
+  proposalId     String
+  approverUserId String
+  decision       ApprovalDecision
+  reason         String?
+  createdAt      DateTime        @default(now())
+  proposal       AiProposal      @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@unique([proposalId, approverUserId])
+}
+
+model Release {
+  id                 String        @id @default(uuid())
+  appId              String
+  appVersionId       String
+  environment        EnvironmentName
+  releaseNumber      Int
+  status             ReleaseStatus @default(BUILDING)
+  publishedByUserId  String
+  createdAt          DateTime      @default(now())
+  appVersion         AppVersion    @relation(fields: [appVersionId], references: [id], onDelete: Restrict)
+
+  @@unique([appId, environment, releaseNumber])
+  @@index([appId, environment, status])
+}
+
+model BuildArtifact {
+  id            String         @id @default(uuid())
+  appVersionId  String
+  target        PlatformTarget
+  artifactType  ArtifactType
+  storageKey    String
+  checksum      String
+  status        ArtifactStatus @default(PENDING)
+  createdAt     DateTime       @default(now())
+  appVersion    AppVersion     @relation(fields: [appVersionId], references: [id], onDelete: Cascade)
+
+  @@index([appVersionId, target])
+}
+
+model Integration {
+  id             String            @id @default(uuid())
+  organizationId String
+  appId          String?
+  providerKey    String
+  displayName    String
+  config         Json
+  secretRef      String?
+  status         IntegrationStatus @default(ACTIVE)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  app            App?              @relation(fields: [appId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, providerKey])
+}
+
+model AuditLog {
+  id               String        @id @default(uuid())
+  organizationId   String
+  appId            String?
+  proposalId       String?
+  actorUserId      String?
+  actorType        ActorType     @default(USER)
+  action           String
+  resourceType     String
+  resourceId       String
+  metadata         Json
+  requestId        String?
+  createdAt        DateTime      @default(now())
+  organization     Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  app              App?          @relation(fields: [appId], references: [id], onDelete: SetNull)
+  proposal         AiProposal?   @relation(fields: [proposalId], references: [id], onDelete: SetNull)
+  actorUser        User?         @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([resourceType, resourceId])
+}

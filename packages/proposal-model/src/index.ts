@@ -1,0 +1,52 @@
+export { applyProposal } from './apply-proposal';
+export type { ApplyProposalOptions, ApplyProposalResult } from './apply-proposal';
+export {
+  addComponentOperationSchema,
+  addPageOperationSchema,
+  bulkDeleteComponentsOperationSchema,
+  bulkUpdateComponentsOperationSchema,
+  changeProposalSchema,
+  componentPatchSchema,
+  duplicateComponentOperationSchema,
+  moveComponentOperationSchema,
+  proposalOperationSchema,
+  removeComponentOperationSchema,
+  removePageOperationSchema,
+  removeWorkflowOperationSchema,
+  replaceDefinitionOperationSchema,
+  resizeComponentOperationSchema,
+  riskLevelSchema,
+  setComponentHiddenOperationSchema,
+  themePatchSchema,
+  updateBindingOperationSchema,
+  updateBreakpointOverridesOperationSchema,
+  updateComponentOperationSchema,
+  updateThemeOperationSchema,
+  updateWorkflowOperationSchema
+} from './proposal-operations';
+export type {
+  AddComponentOperation,
+  AddPageOperation,
+  BreakpointLayoutMap,
+  BulkDeleteComponentsOperation,
+  BulkUpdateComponentsOperation,
+  ChangeProposal,
+  ComponentPatch,
+  DuplicateComponentOperation,
+  MoveComponentOperation,
+  ProposalOperation,
+  RemoveComponentOperation,
+  RemovePageOperation,
+  RemoveWorkflowOperation,
+  ReplaceDefinitionOperation,
+  ResizeComponentOperation,
+  RiskLevel,
+  SetComponentHiddenOperation,
+  ThemePatch,
+  UpdateBindingOperation,
+  UpdateBreakpointOverridesOperation,
+  UpdateComponentOperation,
+  UpdateThemeOperation,
+  UpdateWorkflowOperation
+} from './proposal-operations';
+export { classifyProposalRisk, requiresApproval } from './risk';

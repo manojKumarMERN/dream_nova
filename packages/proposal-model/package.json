@@ -1,0 +1,19 @@
+{
+  "name": "@nova/proposal-model",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@nova/component-registry": "workspace:*",
+    "@nova/errors": "workspace:*",
+    "@nova/spec": "workspace:*",
+    "@nova/spec-validator": "workspace:*",
+    "zod": "^3.25.76"
+  }
+}

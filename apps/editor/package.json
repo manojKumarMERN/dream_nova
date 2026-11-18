@@ -1,0 +1,36 @@
+{
+  "name": "@nova/editor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.build.json --noEmit && vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run --config vite.config.ts"
+  },
+  "dependencies": {
+    "@nova/component-registry": "workspace:*",
+    "@nova/contracts": "workspace:*",
+    "@nova/editor-core": "workspace:*",
+    "@nova/runtime-core": "workspace:*",
+    "@nova/sdk": "workspace:*",
+    "@nova/spec": "workspace:*",
+    "@nova/web-runtime": "workspace:*",
+    "lucide-react": "^0.468.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zustand": "^5.1.0"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.1.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^5.0.4",
+    "jsdom": "^25.0.1",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.8",
+    "vitest": "^3.2.4"
+  }
+}
