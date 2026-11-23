@@ -22,7 +22,11 @@ export const RUNTIME_ACTIONS = [
   'showMessage',
   'setLoading',
   'resetForm',
-  'setComponentProp'
+  'setComponentProp',
+  'queryData',
+  'createRecord',
+  'updateRecord',
+  'deleteRecord'
 ] as const;
 
 export type RuntimeActionName = (typeof RUNTIME_ACTIONS)[number];
@@ -223,6 +227,43 @@ export function validateRuntimeAction(
     case 'showMessage':
       requireString(params, 'message', issues, policy);
       break;
+    case 'queryData': {
+      requireString(params, 'model', issues, policy);
+      const path = requireString(params, 'path', issues, policy);
+      if (path !== undefined && !isWritablePath(path, policy)) {
+        issues.push('path is not writable by the current policy');
+      }
+      if (params.page !== undefined && (typeof params.page !== 'number' || params.page < 1)) {
+        issues.push('page must be a positive number');
+      }
+      if (
+        params.pageSize !== undefined &&
+        (typeof params.pageSize !== 'number' || params.pageSize < 1 || params.pageSize > 200)
+      ) {
+        issues.push('pageSize must be between 1 and 200');
+      }
+      break;
+    }
+    case 'createRecord': {
+      requireString(params, 'model', issues, policy);
+      if (!isRecord(params.values)) {
+        issues.push('values must be an object');
+      }
+      break;
+    }
+    case 'updateRecord': {
+      requireString(params, 'model', issues, policy);
+      requireString(params, 'recordId', issues, policy);
+      if (!isRecord(params.values)) {
+        issues.push('values must be an object');
+      }
+      break;
+    }
+    case 'deleteRecord': {
+      requireString(params, 'model', issues, policy);
+      requireString(params, 'recordId', issues, policy);
+      break;
+    }
   }
 
   return issues;

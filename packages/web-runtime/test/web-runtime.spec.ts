@@ -307,6 +307,6 @@ describe('WebRuntime', () => {
       .filter((child): child is TestElement => child !== null)
       .find((child) => child.type === 'button');
     expect(submit?.props.disabled).toBe(true);
-    expect(submit?.props.children).toBe('Working…');
+    expect(JSON.stringify(submit?.props.children)).toContain('Working…');
   });
 });

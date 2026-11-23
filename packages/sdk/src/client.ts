@@ -1,3 +1,12 @@
+import type {
+  DataBindingDefinition,
+  DataModelDefinition,
+  DataPermissionDefinition,
+  DataQueryDefinition,
+  DataSourceDefinition,
+  WorkflowDefinition
+} from '@nova/spec';
+
 export interface ComponentSummary {
   type: string;
   version: string;
@@ -122,6 +131,58 @@ export interface RuntimePayload {
     settings?: Record<string, unknown> | undefined;
   }>;
   components: RuntimeComponentNode[];
+  dataSchemaVersion?: string | undefined;
+  dataModels?: DataModelDefinition[] | undefined;
+  dataSources?: DataSourceDefinition[] | undefined;
+  queries?: DataQueryDefinition[] | undefined;
+  dataBindings?: DataBindingDefinition[] | undefined;
+  dataPermissions?: DataPermissionDefinition[] | undefined;
+  workflows?: WorkflowDefinition[] | undefined;
+}
+
+export interface DataRecordValue {
+  id: string;
+  modelId?: string | undefined;
+  createdAt: string;
+  updatedAt: string;
+  [key: string]: unknown;
+}
+
+export interface DataQueryResultValue {
+  rows: DataRecordValue[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+}
+
+export interface DataMigrationOperationValue {
+  type: string;
+  modelId: string;
+  modelName: string;
+  destructive: boolean;
+  fieldId?: string | undefined;
+  fieldName?: string | undefined;
+  fromType?: string | undefined;
+  toType?: string | undefined;
+  relationshipId?: string | undefined;
+}
+
+export interface DataMigrationPlanValue {
+  fromVersion: string;
+  toVersion: string;
+  operations: DataMigrationOperationValue[];
+  destructive: boolean;
+  impacts: string[];
+}
+
+export interface DataQueryRequestValue {
+  filters?: unknown;
+  sort?: Array<{ field: string; direction: 'asc' | 'desc' }>;
+  page?: number;
+  pageSize?: number;
+  fields?: string[];
+  expand?: string[];
 }
 
 export interface ChangeProposal {
@@ -310,6 +371,109 @@ export class NovaClient {
       method: 'POST',
       body: JSON.stringify(input)
     });
+  }
+
+  private dataPath(appId: string, suffix: string, environment?: string | undefined): string {
+    const query =
+      environment === undefined ? '' : `?environment=${encodeURIComponent(environment)}`;
+    return `/v1/data/apps/${encodeURIComponent(appId)}/${suffix}${query}`;
+  }
+
+  async getDataSchema(appId: string, environment?: string | undefined): Promise<unknown> {
+    return this.request(this.dataPath(appId, 'schema', environment));
+  }
+
+  async planDataMigration(
+    appId: string,
+    environment?: string | undefined
+  ): Promise<DataMigrationPlanValue> {
+    return this.request(this.dataPath(appId, 'migrations/plan', environment), { method: 'POST' });
+  }
+
+  async applyDataMigration(
+    appId: string,
+    confirmed = false,
+    environment?: string | undefined
+  ): Promise<unknown> {
+    return this.request(this.dataPath(appId, 'migrations/apply', environment), {
+      method: 'POST',
+      body: JSON.stringify({ confirmed })
+    });
+  }
+
+  async createDataRecord(
+    appId: string,
+    model: string,
+    values: Record<string, unknown>,
+    environment?: string | undefined
+  ): Promise<DataRecordValue> {
+    return this.request(
+      this.dataPath(appId, `models/${encodeURIComponent(model)}/records`, environment),
+      { method: 'POST', body: JSON.stringify({ values }) }
+    );
+  }
+
+  async getDataRecord(
+    appId: string,
+    model: string,
+    recordId: string,
+    environment?: string | undefined
+  ): Promise<DataRecordValue> {
+    return this.request(
+      this.dataPath(
+        appId,
+        `models/${encodeURIComponent(model)}/records/${encodeURIComponent(recordId)}`,
+        environment
+      )
+    );
+  }
+
+  async queryDataRecords(
+    appId: string,
+    model: string,
+    query: DataQueryRequestValue = {},
+    environment?: string | undefined
+  ): Promise<DataQueryResultValue> {
+    return this.request(
+      this.dataPath(appId, `models/${encodeURIComponent(model)}/query`, environment),
+      {
+        method: 'POST',
+        body: JSON.stringify(query)
+      }
+    );
+  }
+
+  async updateDataRecord(
+    appId: string,
+    model: string,
+    recordId: string,
+    values: Record<string, unknown>,
+    environment?: string | undefined
+  ): Promise<DataRecordValue> {
+    return this.request(
+      this.dataPath(
+        appId,
+        `models/${encodeURIComponent(model)}/records/${encodeURIComponent(recordId)}`,
+        environment
+      ),
+      { method: 'PATCH', body: JSON.stringify({ values }) }
+    );
+  }
+
+  async deleteDataRecord(
+    appId: string,
+    model: string,
+    recordId: string,
+    environment?: string | undefined
+  ): Promise<void> {
+    await this.request(
+      this.dataPath(
+        appId,
+        `models/${encodeURIComponent(model)}/records/${encodeURIComponent(recordId)}`,
+        environment
+      ),
+      { method: 'DELETE' }
+    );
   }
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {

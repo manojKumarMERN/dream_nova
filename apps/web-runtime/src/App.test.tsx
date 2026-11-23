@@ -21,6 +21,21 @@ const fixture = {
 };
 
 vi.mock('@nova/spec', () => ({
+  createFormValidationAppDefinition: () => ({
+    schemaVersion: '1.0.0',
+    appId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    name: 'Local Demo',
+    targets: ['web'],
+    deployment: {},
+    backend: {},
+    theme: {},
+    pages: [],
+    components: [],
+    dataModels: [],
+    integrations: [],
+    accessPolicies: [],
+    metadata: { labels: {} }
+  }),
   createMinimalAppDefinition: () => ({
     schemaVersion: '1.0.0',
     appId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
@@ -55,17 +70,17 @@ vi.mock('@nova/sdk', () => ({
 }));
 
 vi.mock('@nova/runtime-core', () => ({
-  createRuntimeModel: (definition: unknown, options: { breakpoint: string }) => ({
+  BrowserNavigationAdapter: class {},
+  createRuntimeEngine: (definition: { name: string }) => ({
     definition,
-    breakpoint: options.breakpoint,
-    data: {},
-    resolveProps: (node: { props: unknown }) => node.props
+    setBreakpoint: () => undefined,
+    dispose: () => undefined
   })
 }));
 
 vi.mock('@nova/web-runtime', () => ({
-  WebRuntimeApp: (props: { model: { definition: { name: string } } }) => (
-    <div data-testid="runtime">{props.model.definition.name}</div>
+  WebRuntimeApp: (props: { engine: { definition: { name: string } } }) => (
+    <div data-testid="runtime">{props.engine.definition.name}</div>
   )
 }));
 

@@ -8,9 +8,7 @@ import type {
   InspectorContract,
   InspectorField,
   Toast,
-  WorkflowDefinition,
-  WorkflowRef,
-  WorkflowStep
+  WorkflowRef
 } from '../types';
 import { Icon } from './Icons';
 
@@ -236,9 +234,9 @@ function FieldControl({
   );
 }
 
-function workflowFor(node: ComponentNode, eventName: string): WorkflowDefinition {
-  const steps = node.events?.[eventName]?.params?.steps;
-  return Array.isArray(steps) ? { steps: steps as WorkflowStep[] } : { steps: [] };
+function workflowIdFor(node: ComponentNode, eventName: string): string | undefined {
+  const workflowId = node.events?.[eventName]?.params?.workflowId;
+  return typeof workflowId === 'string' && workflowId.length > 0 ? workflowId : undefined;
 }
 
 function parseOverrideValue(key: string, value: string): unknown {
@@ -265,6 +263,12 @@ export function Inspector(props: InspectorProps) {
   const [bindingSource, setBindingSource] = useState('state');
   const [bindingPath, setBindingPath] = useState('');
   const [bindingTransform, setBindingTransform] = useState('');
+  const [dataEventName, setDataEventName] = useState('');
+  const [dataAction, setDataAction] = useState('queryData');
+  const [dataModel, setDataModel] = useState('');
+  const [dataPath, setDataPath] = useState('data.query');
+  const [dataRecordId, setDataRecordId] = useState('');
+  const [dataValues, setDataValues] = useState('{}');
   const [overrideKey, setOverrideKey] = useState<string>('width');
   const [overrideValue, setOverrideValue] = useState('100');
 
@@ -284,7 +288,16 @@ export function Inspector(props: InspectorProps) {
   const sources = Array.from(
     new Set(['state', 'props', ...state.definition.dataModels.map((model) => model.name)])
   );
+  const dataEvents = Object.keys(contract?.events ?? {});
+  const effectiveDataEvent = dataEvents.includes(dataEventName)
+    ? dataEventName
+    : (dataEvents[0] ?? 'onClick');
   const overrides = selected?.breakpointOverrides?.[state.breakpoint] ?? {};
+
+  useEffect(() => {
+    const firstModel = state.definition.dataModels[0]?.name ?? '';
+    setDataModel((current) => (current.length > 0 ? current : firstModel));
+  }, [state.definition.dataModels]);
 
   const updateProp = (key: string, value: unknown) => {
     if (selected === undefined) {
@@ -321,12 +334,46 @@ export function Inspector(props: InspectorProps) {
     onToast('success', `Override ${key === null ? 'cleared' : 'set'} for ${state.breakpoint}`);
   };
 
-  const saveWorkflow = (eventName: string, workflow: WorkflowDefinition) => {
+  const applyDataAction = () => {
     if (selected === undefined) {
       return;
     }
-    session.setWorkflowEvent(selected.id, eventName, workflow);
-    onToast('success', `Workflow saved for ${eventName}`);
+    const model = dataModel.trim();
+    if (model.length === 0) {
+      onToast('error', 'Select a data model first');
+      return;
+    }
+    let params: Record<string, unknown>;
+    if (dataAction === 'queryData') {
+      if (dataPath.trim().length === 0) {
+        onToast('error', 'A result path is required');
+        return;
+      }
+      params = { model, path: dataPath.trim() };
+    } else if (dataAction === 'createRecord' || dataAction === 'updateRecord') {
+      try {
+        const values = JSON.parse(dataValues) as unknown;
+        if (typeof values !== 'object' || values === null || Array.isArray(values)) {
+          throw new Error('Values must be an object');
+        }
+        params =
+          dataAction === 'createRecord'
+            ? { model, values }
+            : { model, recordId: dataRecordId.trim(), values };
+      } catch {
+        onToast('error', 'Values must be a valid JSON object');
+        return;
+      }
+    } else {
+      params = { model, recordId: dataRecordId.trim() };
+    }
+    session.updateNode(selected.id, {
+      events: {
+        ...selected.events,
+        [effectiveDataEvent]: { action: dataAction, params }
+      }
+    });
+    onToast('success', `${dataAction} attached to ${effectiveDataEvent}`);
   };
 
   return (
@@ -584,8 +631,143 @@ export function Inspector(props: InspectorProps) {
                     Clear
                   </button>
                 </div>
+                <div className="binding-presets">
+                  <button
+                    type="button"
+                    disabled={locked}
+                    onClick={() => {
+                      setBindingProp('rows');
+                      setBindingSource('state');
+                      setBindingPath('data.query.rows');
+                    }}
+                  >
+                    Table rows
+                  </button>
+                  <button
+                    type="button"
+                    disabled={locked}
+                    onClick={() => {
+                      setBindingProp('items');
+                      setBindingSource('state');
+                      setBindingPath('data.query.rows');
+                    }}
+                  >
+                    List items
+                  </button>
+                  <button
+                    type="button"
+                    disabled={locked}
+                    onClick={() => {
+                      setBindingProp('value');
+                      setBindingSource('state');
+                      setBindingPath('data.query.rows.0');
+                    }}
+                  >
+                    First record
+                  </button>
+                </div>
               </div>
             ) : null}
+          </section>
+
+          <section className="inspector-section">
+            <h3>Data actions</h3>
+            <div className="field-row">
+              <label htmlFor="data-event">Event</label>
+              <select
+                id="data-event"
+                aria-label="Data action event"
+                value={effectiveDataEvent}
+                disabled={locked}
+                onChange={(event) => setDataEventName(event.target.value)}
+              >
+                {dataEvents.map((eventName) => (
+                  <option key={eventName} value={eventName}>
+                    {eventName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="field-row">
+              <label htmlFor="data-action">Action</label>
+              <select
+                id="data-action"
+                aria-label="Data action"
+                value={dataAction}
+                disabled={locked}
+                onChange={(event) => setDataAction(event.target.value)}
+              >
+                <option value="queryData">queryData</option>
+                <option value="createRecord">createRecord</option>
+                <option value="updateRecord">updateRecord</option>
+                <option value="deleteRecord">deleteRecord</option>
+              </select>
+            </div>
+            <div className="field-row">
+              <label htmlFor="data-model">Model</label>
+              <input
+                id="data-model"
+                aria-label="Data model"
+                list="data-model-options"
+                value={dataModel}
+                disabled={locked}
+                onChange={(event) => setDataModel(event.target.value)}
+              />
+              <datalist id="data-model-options">
+                {state.definition.dataModels.map((model) => (
+                  <option key={model.id} value={model.name}>
+                    {model.name}
+                  </option>
+                ))}
+              </datalist>
+            </div>
+            {dataAction === 'queryData' ? (
+              <div className="field-row">
+                <label htmlFor="data-path">Result path</label>
+                <input
+                  id="data-path"
+                  aria-label="Data result path"
+                  value={dataPath}
+                  disabled={locked}
+                  onChange={(event) => setDataPath(event.target.value)}
+                />
+              </div>
+            ) : null}
+            {dataAction === 'updateRecord' || dataAction === 'deleteRecord' ? (
+              <div className="field-row">
+                <label htmlFor="data-record">Record id</label>
+                <input
+                  id="data-record"
+                  aria-label="Data record id"
+                  value={dataRecordId}
+                  disabled={locked}
+                  onChange={(event) => setDataRecordId(event.target.value)}
+                />
+              </div>
+            ) : null}
+            {dataAction === 'createRecord' || dataAction === 'updateRecord' ? (
+              <div className="field-row">
+                <label htmlFor="data-values">Values (JSON)</label>
+                <textarea
+                  id="data-values"
+                  aria-label="Data values"
+                  rows={3}
+                  value={dataValues}
+                  disabled={locked}
+                  onChange={(event) => setDataValues(event.target.value)}
+                />
+              </div>
+            ) : null}
+            <div className="binding-actions">
+              <button
+                type="button"
+                className="button-primary"
+                disabled={locked}
+                onClick={applyDataAction}
+              >
+                <Icon name="check" size={13} /> Apply data action
+              </button>
+            </div>
           </section>
 
           <section className="inspector-section">
@@ -594,7 +776,10 @@ export function Inspector(props: InspectorProps) {
               <div className="inspector-hint">This component has no declared events.</div>
             ) : (
               Object.entries(contract.events).map(([eventName, eventContract]) => {
-                const workflow = workflowFor(selected, eventName);
+                const workflowId = workflowIdFor(selected, eventName);
+                const workflow = state.definition.workflows.find(
+                  (candidate) => candidate.id === workflowId
+                );
                 const action = selected.events?.[eventName]?.action ?? '';
                 return (
                   <div className="event-card" key={eventName}>
@@ -616,7 +801,11 @@ export function Inspector(props: InspectorProps) {
                       }}
                     />
                     <div className="event-meta">
-                      {workflow.steps.length} step{workflow.steps.length === 1 ? '' : 's'}
+                      {workflow === undefined
+                        ? 'No workflow attached'
+                        : `${workflow.name} · ${workflow.steps.length} step${
+                            workflow.steps.length === 1 ? '' : 's'
+                          }`}
                     </div>
                     <div className="event-actions">
                       <button
@@ -628,21 +817,13 @@ export function Inspector(props: InspectorProps) {
                       </button>
                       <button
                         type="button"
-                        disabled={locked}
-                        onClick={() =>
-                          saveWorkflow(eventName, {
-                            steps: [
-                              {
-                                id: `step-${Date.now()}`,
-                                kind: 'action',
-                                type: action || 'log',
-                                params: {}
-                              }
-                            ]
-                          })
-                        }
+                        disabled={locked || workflowId === undefined}
+                        onClick={() => {
+                          session.setWorkflowEvent(selected.id, eventName, null);
+                          onToast('success', `Workflow detached from ${eventName}`);
+                        }}
                       >
-                        <Icon name="check" size={13} /> Save
+                        <Icon name="x" size={13} /> Detach
                       </button>
                     </div>
                   </div>

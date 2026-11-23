@@ -111,6 +111,9 @@ model Organization {
   proposals     AiProposal[]
   integrations  Integration[]
   auditLogs     AuditLog[]
+  appDataSchemas AppDataSchema[]
+  appDataRecords AppDataRecord[]
+  appDataMigrations AppDataMigration[]
 }
 
 model User {
@@ -154,6 +157,9 @@ model App {
   proposals       AiProposal[]
   integrations    Integration[]
   auditLogs       AuditLog[]
+  appDataSchemas  AppDataSchema[]
+  appDataRecords  AppDataRecord[]
+  appDataMigrations AppDataMigration[]
 
   @@unique([organizationId, slug])
   @@index([organizationId, status])
@@ -338,4 +344,59 @@ model AuditLog {
 
   @@index([organizationId, createdAt])
   @@index([resourceType, resourceId])
+}
+
+model AppDataSchema {
+  id             String        @id @default(uuid())
+  organizationId String
+  appId          String
+  environment    String
+  modelId        String
+  version        String
+  definition     Json
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  app            App           @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, appId, environment, modelId])
+  @@index([organizationId, appId, environment])
+}
+
+model AppDataRecord {
+  id             String        @id @default(uuid())
+  organizationId String
+  appId          String
+  environment    String
+  modelId        String
+  values         Json
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  createdBy      String
+  updatedBy      String
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  app            App           @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, appId, environment, modelId, id])
+  @@index([organizationId, appId, environment, modelId])
+  @@index([organizationId, appId, environment, modelId, createdAt])
+}
+
+model AppDataMigration {
+  id             String        @id @default(uuid())
+  organizationId String
+  appId          String
+  environment    String
+  fromVersion    String
+  toVersion      String
+  plan           Json
+  status         String
+  error          String?
+  appliedAt      DateTime?
+  createdAt      DateTime      @default(now())
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  app            App           @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, appId, environment, toVersion])
+  @@index([organizationId, appId, environment, createdAt])
 }

@@ -1,6 +1,14 @@
 import type { ComponentContract } from '@nova/contracts';
 import { NovaClient } from '@nova/sdk';
-import type { AppRecord, AppVersionRecord, ValidationReport } from '@nova/sdk';
+import type {
+  AppRecord,
+  AppVersionRecord,
+  DataMigrationPlanValue,
+  DataQueryRequestValue,
+  DataQueryResultValue,
+  DataRecordValue,
+  ValidationReport
+} from '@nova/sdk';
 import { createMinimalAppDefinition, runtimePayloadToDefinition } from '@nova/spec';
 import type { AppDefinition, ComponentNode, RuntimePayloadLike } from '@nova/spec';
 import {
@@ -13,6 +21,25 @@ import {
 import type { AppSummaryRecord, Proposal, SaveOptions, SaveResult, VersionRecord } from './types';
 
 export const API_BASE_URL = import.meta.env.VITE_NOVA_API_URL ?? 'http://localhost:3000';
+
+export const DATA_ENVIRONMENTS = ['development', 'preview', 'production'] as const;
+export type DataEnvironment = (typeof DATA_ENVIRONMENTS)[number];
+
+export interface DataMigrationHistoryValue {
+  id: string;
+  fromVersion: string;
+  toVersion: string;
+  status: 'pending' | 'applied' | 'failed';
+  createdAt: string;
+  appliedAt?: string;
+  error?: string;
+}
+
+export interface DataSchemaStatusValue {
+  current?: { version: string; models: unknown[] };
+  plan: DataMigrationPlanValue;
+  history: DataMigrationHistoryValue[];
+}
 
 const ORG_ID = import.meta.env.VITE_NOVA_ORG_ID;
 const USER_ID = import.meta.env.VITE_NOVA_USER_ID;
@@ -468,6 +495,65 @@ export async function validateProposal(
     return { ok: false, detail: error instanceof Error ? error.message : String(error) };
   }
   return { ok: proposal.changes.length > 0, detail: 'Local proposal check passed' };
+}
+
+export async function getDataSchemaStatus(
+  appId: string,
+  environment: DataEnvironment = 'development'
+): Promise<DataSchemaStatusValue> {
+  return (await novaClient.getDataSchema(appId, environment)) as DataSchemaStatusValue;
+}
+
+export async function getDataMigrationPlan(
+  appId: string,
+  environment: DataEnvironment = 'development'
+): Promise<DataMigrationPlanValue> {
+  return novaClient.planDataMigration(appId, environment);
+}
+
+export async function applyDataMigration(
+  appId: string,
+  confirmed: boolean,
+  environment: DataEnvironment = 'development'
+): Promise<void> {
+  await novaClient.applyDataMigration(appId, confirmed, environment);
+}
+
+export async function queryDataRecords(
+  appId: string,
+  model: string,
+  query: DataQueryRequestValue,
+  environment: DataEnvironment = 'development'
+): Promise<DataQueryResultValue> {
+  return novaClient.queryDataRecords(appId, model, query, environment);
+}
+
+export async function createDataRecord(
+  appId: string,
+  model: string,
+  values: Record<string, unknown>,
+  environment: DataEnvironment = 'development'
+): Promise<DataRecordValue> {
+  return novaClient.createDataRecord(appId, model, values, environment);
+}
+
+export async function updateDataRecord(
+  appId: string,
+  model: string,
+  recordId: string,
+  values: Record<string, unknown>,
+  environment: DataEnvironment = 'development'
+): Promise<DataRecordValue> {
+  return novaClient.updateDataRecord(appId, model, recordId, values, environment);
+}
+
+export async function deleteDataRecord(
+  appId: string,
+  model: string,
+  recordId: string,
+  environment: DataEnvironment = 'development'
+): Promise<void> {
+  await novaClient.deleteDataRecord(appId, model, recordId, environment);
 }
 
 export async function publishApp(appId: string, versionId: string): Promise<void> {

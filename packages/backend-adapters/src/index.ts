@@ -7,6 +7,8 @@ export type {
   StorageAdapter,
   StoragePutResult
 } from './adapters';
+export { InMemoryDataStore, PrismaDataStore } from './data-store';
+export type { DataStore as AppDataStore } from '@nova/data-engine';
 export { InMemoryPlatformRepository, PrismaPlatformRepository } from './platform-repository';
 export type {
   AppRecord,

@@ -43,12 +43,20 @@ export interface RuntimeEngineEvent {
   payload: unknown;
 }
 
+export interface RuntimeDataAccess {
+  query?(params: Record<string, unknown>): unknown | Promise<unknown>;
+  create?(params: Record<string, unknown>): unknown | Promise<unknown>;
+  update?(params: Record<string, unknown>): unknown | Promise<unknown>;
+  delete?(params: Record<string, unknown>): unknown | Promise<unknown>;
+}
+
 export interface CreateRuntimeEngineOptions {
   contracts: readonly ComponentContract[];
   breakpoint?: Breakpoint | undefined;
   navigation?: RuntimeNavigationAdapter | undefined;
   initialPath?: string | undefined;
   data?: Record<string, unknown> | undefined;
+  dataAccess?: RuntimeDataAccess | undefined;
   onEvent?: ((event: RuntimeEngineEvent) => void) | undefined;
   onError?: ((error: { message: string; code?: string | undefined }) => void) | undefined;
   policy?: RuntimePolicy | undefined;
@@ -539,6 +547,53 @@ export class RuntimeEngine {
         this.store.updateComponent(target, { [prop]: params.value });
         return;
       }
+      case 'queryData':
+      case 'createRecord':
+      case 'updateRecord':
+      case 'deleteRecord': {
+        void this.executeDataAction(action.action, params, rawParams.path);
+        return;
+      }
+    }
+  }
+
+  private async executeDataAction(
+    action: 'queryData' | 'createRecord' | 'updateRecord' | 'deleteRecord',
+    params: Record<string, unknown>,
+    targetPath: unknown
+  ): Promise<void> {
+    const access = this.options.dataAccess;
+    if (access === undefined) {
+      this.reportError('No data access handler is configured', 'DATA_ACCESS_MISSING');
+      return;
+    }
+    try {
+      const handler =
+        action === 'queryData'
+          ? access.query
+          : action === 'createRecord'
+            ? access.create
+            : action === 'updateRecord'
+              ? access.update
+              : access.delete;
+      if (handler === undefined) {
+        throw new Error(`Unsupported data action: ${action}`);
+      }
+      const result = await handler({ ...params });
+      if (typeof targetPath === 'string' && targetPath.length > 0) {
+        if (!isWritablePath(targetPath, this.options.policy)) {
+          this.reportError('Data result path is not writable', 'STATE_WRITE_REJECTED');
+          return;
+        }
+        this.store.updateApp(
+          setAtPath(this.store.getSnapshot().app, targetPath, result, this.limits)
+        );
+      }
+    } catch (error) {
+      this.reportError(
+        error instanceof Error ? error.message : 'Data action failed',
+        'DATA_ACTION_FAILED'
+      );
     }
   }
 

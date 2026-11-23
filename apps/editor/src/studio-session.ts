@@ -1,6 +1,6 @@
 import type { EditorSession as CoreEditorSession } from '@nova/editor-core';
 import type { AppDefinition, Binding, ComponentNode, PageDefinition } from '@nova/spec';
-import type { DropTarget, EditorSessionLike, WorkflowDefinition } from './types';
+import type { DropTarget, EditorSessionLike } from './types';
 import { createUniqueId } from './id';
 import { getNode } from './tree';
 
@@ -143,16 +143,22 @@ export function createStudioSession(
       core.bindProp(id, prop, binding);
     },
 
-    setWorkflowEvent(id, eventName, workflow: WorkflowDefinition) {
+    setWorkflowEvent(id, eventName, workflowId) {
       const state = core.getState();
       const node = getNode(state.definition, id);
       const current = node?.events?.[eventName];
+      if (workflowId === null) {
+        const events = { ...(node?.events ?? {}) };
+        delete events[eventName];
+        core.updateNode(id, { events });
+        return;
+      }
       core.updateNode(id, {
         events: {
           ...(node?.events ?? {}),
           [eventName]: {
             action: current?.action ?? 'runWorkflow',
-            params: { ...(current?.params ?? {}), steps: workflow.steps }
+            params: { workflowId }
           }
         }
       });

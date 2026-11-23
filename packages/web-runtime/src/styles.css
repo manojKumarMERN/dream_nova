@@ -319,3 +319,225 @@
 .nova-alert span {
   margin-right: 0.5rem;
 }
+
+.nova-runtime {
+  --nova-accent: #4f46e5;
+  --nova-accent-soft: #eef2ff;
+  --nova-shadow-sm: 0 4px 14px rgb(31 41 55 / 8%);
+  --nova-shadow-md: 0 16px 38px rgb(31 41 55 / 14%);
+}
+
+.nova-runtime button,
+.nova-runtime select,
+.nova-runtime input:not([type='checkbox']):not([type='radio']):not([type='file']),
+.nova-runtime textarea {
+  transition:
+    background 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.nova-runtime button:hover:not(:disabled) {
+  box-shadow: var(--nova-shadow-sm);
+  transform: translateY(-1px);
+}
+
+.nova-runtime button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.nova-runtime :focus-visible {
+  outline: 2px solid #8b83ff;
+  outline-offset: 2px;
+}
+
+.nova-runtime input:not([type='checkbox']):not([type='radio']):not([type='file']):focus,
+.nova-runtime select:focus,
+.nova-runtime textarea:focus {
+  border-color: #8b83ff;
+  box-shadow: 0 0 0 3px rgb(91 80 230 / 12%);
+  outline: none;
+}
+
+.nova-runtime svg {
+  flex: 0 0 auto;
+}
+
+.nova-button,
+.nova-form button,
+.nova-tabs button,
+.nova-breadcrumb button,
+.nova-pagination button,
+.nova-dropdown button,
+.nova-modal button,
+.nova-link,
+.nova-section-title,
+.nova-sidebar-title,
+.nova-navbar-brand,
+.nova-chart-title,
+.nova-statistics-label,
+.nova-badge,
+.nova-list-empty,
+.nova-pagination-summary,
+.nova-fallback-issue,
+.nova-alert,
+.nova-toast,
+.nova-form-error,
+.nova-form-failure,
+.nova-form-success {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.4rem;
+}
+
+.nova-container,
+.nova-section,
+.nova-card,
+.nova-modal-content,
+.nova-dialog,
+.nova-drawer,
+.nova-statistics-card {
+  transition:
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.nova-container:hover,
+.nova-section:hover,
+.nova-card:hover,
+.nova-statistics-card:hover {
+  box-shadow: var(--nova-shadow-sm);
+  transform: translateY(-2px);
+}
+
+.nova-alert,
+.nova-toast,
+.nova-form-error,
+.nova-form-failure,
+.nova-form-success {
+  display: flex;
+}
+
+.nova-badge {
+  background: var(--nova-accent-soft);
+}
+
+.nova-form-error,
+.nova-form-failure {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 0.5rem;
+  color: #b42318;
+  padding: 0.5rem 0.75rem;
+}
+
+.nova-form-success {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 0.5rem;
+  color: #047857;
+  padding: 0.5rem 0.75rem;
+}
+
+.nova-fallback-issue {
+  color: #b42318;
+  font-size: 0.875rem;
+}
+
+.nova-modal {
+  animation: nova-overlay-in 180ms ease both;
+}
+
+.nova-modal-content,
+.nova-dialog {
+  animation: nova-modal-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  box-shadow: var(--nova-shadow-md);
+}
+
+.nova-drawer {
+  animation: nova-drawer-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.nova-toast {
+  animation: nova-toast-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  box-shadow: var(--nova-shadow-sm);
+}
+
+.nova-alert {
+  animation: nova-fade-up 240ms ease both;
+  box-shadow: var(--nova-shadow-sm);
+}
+
+.nova-spin {
+  animation: nova-spin 900ms linear infinite;
+}
+
+@keyframes nova-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes nova-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes nova-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes nova-drawer-in {
+  from {
+    transform: translateX(18px);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes nova-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes nova-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nova-runtime *,
+  .nova-runtime *::before,
+  .nova-runtime *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

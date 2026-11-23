@@ -23,6 +23,44 @@ export type {
   EventBinding
 } from './component-node';
 export {
+  dataBindingDefinitionSchema,
+  dataBindingModeSchema,
+  dataFieldVisibilitySchema,
+  dataIndexDefinitionSchema,
+  dataPermissionActionSchema,
+  dataPermissionDefinitionSchema,
+  dataPermissionReferenceSchema,
+  dataQueryConditionSchema,
+  dataQueryDefinitionSchema,
+  dataQueryGroupSchema,
+  dataQueryOperatorSchema,
+  dataQuerySortSchema,
+  dataReferentialActionSchema,
+  dataRelationshipCardinalitySchema,
+  dataRelationshipDefinitionSchema,
+  dataSchemaVersionSchema,
+  dataValidationRuleSchema,
+  dataSourceDefinitionSchema
+} from './data-engine-spec';
+export type {
+  DataBindingDefinition,
+  DataBindingMode,
+  DataIndexDefinition,
+  DataPermissionAction,
+  DataPermissionDefinition,
+  DataPermissionReference,
+  DataQueryCondition,
+  DataQueryDefinition,
+  DataQueryGroup,
+  DataQueryOperator,
+  DataQuerySort,
+  DataReferentialAction,
+  DataRelationshipCardinality,
+  DataRelationshipDefinition,
+  DataValidationRule,
+  DataSourceDefinition
+} from './data-engine-spec';
+export {
   dataFieldDefinitionSchema,
   dataFieldTypeSchema,
   dataModelDefinitionSchema
@@ -46,16 +84,33 @@ export {
   workflowConditionSchema,
   workflowDefinitionSchema,
   workflowErrorHandlerSchema,
-  workflowStepSchema
+  workflowEventConfigurationSchema,
+  workflowEventNodeTypeSchema,
+  workflowGraphEdgeSchema,
+  workflowGraphNodeSchema,
+  workflowGraphSchema,
+  workflowOutcomeSchema,
+  workflowRetryPolicySchema,
+  workflowStepSchema,
+  workflowSubscriptionBehaviorSchema
 } from './workflow';
 export type {
   WorkflowCondition,
   WorkflowDefinition,
   WorkflowErrorHandler,
-  WorkflowStep
+  WorkflowEventConfiguration,
+  WorkflowEventNodeType,
+  WorkflowGraph,
+  WorkflowGraphEdge,
+  WorkflowGraphNode,
+  WorkflowOutcome,
+  WorkflowRetryPolicy,
+  WorkflowStep,
+  WorkflowSubscriptionBehavior
 } from './workflow';
 export { migrateDefinition, specMigrations } from './migrations/migrate-definition';
 export type { SpecMigration } from './migrations/migrate-definition';
 export { createMinimalAppDefinition } from './fixtures/minimal-app';
+export { createFormValidationAppDefinition } from './fixtures/form-validation-app';
 export { runtimePayloadToDefinition } from './runtime-payload';
 export type { RuntimePayloadLike } from './runtime-payload';

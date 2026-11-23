@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ComponentContract } from '@nova/contracts';
-import { createMinimalAppDefinition } from '@nova/spec';
+import { createFormValidationAppDefinition, createMinimalAppDefinition } from '@nova/spec';
 import type { AppDefinition } from '@nova/spec';
-import type { RuntimeLocation } from '../src/index';
+import type { RuntimeLocation, RuntimeNode } from '../src/index';
 import {
   MemoryNavigationAdapter,
   RuntimeLoadError,
@@ -40,8 +40,10 @@ const CONTRACTS: readonly ComponentContract[] = [
   contract('nova.stack', 'nova-web/stack'),
   contract('nova.text', 'nova-web/text'),
   contract('nova.text-input', 'nova-web/text-input'),
+  contract('nova.password-input', 'nova-web/password-input'),
   contract('nova.button', 'nova-web/button'),
-  contract('nova.form', 'nova-web/form')
+  contract('nova.form', 'nova-web/form'),
+  contract('nova.heading', 'nova-web/heading')
 ];
 
 function createRuntimeDefinition(): AppDefinition {
@@ -139,6 +141,26 @@ describe('runtime expressions', () => {
     ).toBeGreaterThan(0);
   });
 
+  it('validates data actions and their parameters', () => {
+    expect(
+      validateRuntimeAction({
+        action: 'queryData',
+        params: { model: 'Todo', path: 'data.todos', pageSize: 20 }
+      })
+    ).toEqual([]);
+    expect(
+      validateRuntimeAction({ action: 'queryData', params: { model: 'Todo', path: '__proto__.x' } })
+        .length
+    ).toBeGreaterThan(0);
+    expect(
+      validateRuntimeAction({ action: 'createRecord', params: { model: 'Todo', values: [] } })
+        .length
+    ).toBeGreaterThan(0);
+    expect(
+      validateRuntimeAction({ action: 'deleteRecord', params: { model: 'Todo' } }).length
+    ).toBeGreaterThan(0);
+  });
+
   it('rejects unsafe nested action payloads', () => {
     expect(
       validateRuntimeAction({
@@ -199,11 +221,112 @@ describe('RuntimeEngine', () => {
     engine.dispose();
   });
 
+  it('validates the FORM_VALIDATION login and lands on /home with state and toast', () => {
+    const engine = createRuntimeEngine(createFormValidationAppDefinition(), {
+      contracts: CONTRACTS,
+      navigation: new MemoryNavigationAdapter('/login')
+    });
+
+    engine.handleEvent({
+      nodeId: 'f4000000-0000-4000-8000-000000000001',
+      event: 'change',
+      payload: { value: 'Ada' }
+    });
+    engine.handleEvent({
+      nodeId: 'f4000000-0000-4000-8000-000000000002',
+      event: 'change',
+      payload: { value: 'lovelace' }
+    });
+    engine.handleEvent({
+      nodeId: 'f3000000-0000-4000-8000-000000000003',
+      event: 'submit',
+      payload: { values: { username: 'Ada', password: 'lovelace' } }
+    });
+
+    const state = engine.getSnapshot();
+    expect(state.app.session).toMatchObject({ username: 'Ada', authenticated: true });
+    expect(state.route.pageId).toBe('f1000000-0000-4000-8000-000000000002');
+    expect(state.route.pathname).toBe('/home');
+    expect(state.messages.some((message) => message.text === 'Good evening, Ada')).toBe(true);
+
+    const homePage = engine.getModel().pages.find((page) => page.route === '/home');
+    const contents: string[] = [];
+    const collectContent = (node: RuntimeNode) => {
+      if (typeof node.props['content'] === 'string') {
+        contents.push(node.props['content']);
+      }
+      for (const child of node.children) {
+        collectContent(child);
+      }
+      for (const slot of Object.values(node.slots)) {
+        for (const child of slot) {
+          collectContent(child);
+        }
+      }
+    };
+    if (homePage === undefined) {
+      throw new Error('FORM_VALIDATION fixture has no /home page');
+    }
+    collectContent(homePage.root);
+    expect(contents).toContain('Signed in as Ada');
+    engine.dispose();
+  });
+
+  it('blocks FORM_VALIDATION navigation when required fields are empty', () => {
+    const engine = createRuntimeEngine(createFormValidationAppDefinition(), {
+      contracts: CONTRACTS,
+      navigation: new MemoryNavigationAdapter('/login')
+    });
+
+    engine.handleEvent({
+      nodeId: 'f3000000-0000-4000-8000-000000000003',
+      event: 'submit',
+      payload: { values: {} }
+    });
+
+    const state = engine.getSnapshot();
+    expect(state.forms['f3000000-0000-4000-8000-000000000003']?.errors).toMatchObject({
+      username: 'Username is required',
+      password: 'Password is required'
+    });
+    expect(state.route.pathname).toBe('/login');
+    expect(state.messages.some((message) => message.text === 'Form validation failed')).toBe(true);
+    engine.dispose();
+  });
+
   it('matches parameterized routes', () => {
     const definition = createRuntimeDefinition();
     const route = resolveRuntimeRoute(definition.pages, parseRuntimeLocation('/done/Ada'));
     expect(route?.page.id).toBe('done');
     expect(route?.params).toEqual({ id: 'Ada' });
+  });
+
+  it('executes data actions through the configured adapter', async () => {
+    const definition = createMinimalAppDefinition();
+    const root = definition.components[0];
+    if (root === undefined) {
+      throw new Error('Minimal app definition has no root component');
+    }
+    root.events = {
+      click: { action: 'queryData', params: { model: 'Todo', path: 'data.todos' } }
+    };
+    const result = { rows: [{ id: 'record-1', name: 'Ada' }] };
+    const query = vi.fn().mockResolvedValue(result);
+    const engine = createRuntimeEngine(definition, {
+      contracts: CONTRACTS,
+      navigation: new MemoryNavigationAdapter('/'),
+      dataAccess: { query }
+    });
+
+    engine.handleEvent({ nodeId: root.id, event: 'click', payload: {} });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(query).toHaveBeenCalledWith(
+      expect.objectContaining({ model: 'Todo', path: 'data.todos' })
+    );
+    expect(engine.getSnapshot().app.data).toEqual({ todos: result });
+    engine.dispose();
   });
 
   it('honors tenant policy and emits structured telemetry without action values', () => {

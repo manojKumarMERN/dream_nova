@@ -1,5 +1,6 @@
 import type { APIRequestContext } from '@playwright/test';
 import type { AppRecord, ReleaseRecord } from '@nova/sdk';
+import type { AppDefinition } from '@nova/spec';
 import { createE2eDefinition } from './fixtures';
 
 export const API_URL = 'http://localhost:3000/api';
@@ -15,10 +16,14 @@ export function runId(): string {
 
 export async function createPublishedApp(
   request: APIRequestContext,
-  options: { publicAccess: boolean; publish?: boolean } = { publicAccess: true, publish: true }
-): Promise<{ app: AppRecord; definition: ReturnType<typeof createE2eDefinition> }> {
+  options: {
+    publicAccess: boolean;
+    publish?: boolean;
+    definition?: AppDefinition;
+  } = { publicAccess: true, publish: true }
+): Promise<{ app: AppRecord; definition: AppDefinition }> {
   const id = runId();
-  const definition = createE2eDefinition(id, options.publicAccess);
+  const definition = options.definition ?? createE2eDefinition(id, options.publicAccess);
   const appResponse = await request.post(`${API_URL}/v1/apps`, {
     headers: ACTOR_HEADERS,
     data: { orgId: ACTOR_HEADERS['x-org-id'], name: definition.name, definition }

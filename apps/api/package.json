@@ -20,6 +20,7 @@
     "@nova/backend-adapters": "workspace:*",
     "@nova/component-registry": "workspace:*",
     "@nova/config": "workspace:*",
+    "@nova/data-engine": "workspace:*",
     "@nova/db": "workspace:*",
     "@nova/errors": "workspace:*",
     "@nova/logging": "workspace:*",

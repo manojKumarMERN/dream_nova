@@ -3,7 +3,16 @@ import {
   bindingSchema,
   breakpointOverridesSchema,
   componentLayoutSchema,
-  eventBindingSchema
+  dataBindingDefinitionSchema,
+  dataModelDefinitionSchema,
+  dataPermissionDefinitionSchema,
+  dataQueryDefinitionSchema,
+  dataQueryGroupSchema,
+  dataQuerySortSchema,
+  dataSchemaVersionSchema,
+  dataSourceDefinitionSchema,
+  eventBindingSchema,
+  workflowDefinitionSchema
 } from '@nova/spec';
 import { z } from 'zod';
 
@@ -96,7 +105,35 @@ export const runtimePayloadSchema = z
           .strict()
       )
       .min(1),
-    components: z.array(runtimeNodeSchema).min(1)
+    components: z.array(runtimeNodeSchema).min(1),
+    dataSchemaVersion: dataSchemaVersionSchema.optional(),
+    dataModels: z.array(dataModelDefinitionSchema).optional(),
+    dataSources: z.array(dataSourceDefinitionSchema).optional(),
+    queries: z.array(dataQueryDefinitionSchema).optional(),
+    dataBindings: z.array(dataBindingDefinitionSchema).optional(),
+    dataPermissions: z.array(dataPermissionDefinitionSchema).optional(),
+    workflows: z.array(workflowDefinitionSchema).optional()
+  })
+  .strict();
+
+export const dataEnvironmentSchema = z.enum(['development', 'preview', 'production']);
+
+export const dataRecordValuesSchema = z.object({
+  values: z.record(z.unknown())
+});
+
+export const applyDataMigrationSchema = z.object({
+  confirmed: z.boolean().optional()
+});
+
+export const dataQueryRequestSchema = z
+  .object({
+    filters: dataQueryGroupSchema.optional(),
+    sort: z.array(dataQuerySortSchema).max(20).optional(),
+    page: z.number().int().min(1).max(100000).optional(),
+    pageSize: z.number().int().min(1).max(200).optional(),
+    fields: z.array(z.string().min(1)).max(100).optional(),
+    expand: z.array(z.string().min(1)).max(20).optional()
   })
   .strict();
 
@@ -106,3 +143,6 @@ export type ValidateProposalDto = z.infer<typeof validateProposalSchema>;
 export type ApplyProposalDto = z.infer<typeof applyProposalSchema>;
 export type PublishDto = z.infer<typeof publishSchema>;
 export type GenerateAiProposalDto = z.infer<typeof generateAiProposalSchema>;
+export type DataRecordValuesDto = z.infer<typeof dataRecordValuesSchema>;
+export type ApplyDataMigrationDto = z.infer<typeof applyDataMigrationSchema>;
+export type DataQueryRequestDto = z.infer<typeof dataQueryRequestSchema>;

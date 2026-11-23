@@ -18,7 +18,8 @@
     "@nova/spec": "workspace:*",
     "@nova/web-runtime": "workspace:*",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "react-icons": "^5.7.0"
   },
   "devDependencies": {
     "@testing-library/react": "^16.1.0",

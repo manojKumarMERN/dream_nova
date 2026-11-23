@@ -697,6 +697,40 @@ function descriptionFromDefinition(definition: Prisma.JsonValue | undefined): st
   return typeof value === 'string' ? value : undefined;
 }
 
+async function requirePrismaAppOwned(
+  client: PrismaClient,
+  orgId: string,
+  appId: string
+): Promise<void> {
+  const app = await client.app.findFirst({
+    where: { id: appId, organizationId: orgId },
+    select: { id: true }
+  });
+  if (app === null) {
+    throw new NovaError(NovaErrorCodes.NOT_FOUND, 'Application not found', {
+      details: { appId }
+    });
+  }
+}
+
+async function requirePrismaVersionOwned(
+  client: PrismaClient,
+  orgId: string,
+  versionId: string,
+  appId: string,
+  message = 'Version not found'
+): Promise<void> {
+  const version = await client.appVersion.findFirst({
+    where: { id: versionId, appId, app: { organizationId: orgId } },
+    select: { id: true }
+  });
+  if (version === null) {
+    throw new NovaError(NovaErrorCodes.NOT_FOUND, message, {
+      details: { versionId }
+    });
+  }
+}
+
 export class PrismaPlatformRepository implements PlatformRepository {
   constructor(private readonly client: PrismaClient) {}
 
@@ -755,6 +789,7 @@ export class PrismaPlatformRepository implements PlatformRepository {
   }
 
   async createVersion(input: CreateVersionInput): Promise<AppVersionRecord> {
+    await requirePrismaAppOwned(this.client, input.orgId, input.appId);
     const created = await this.client.appVersion.create({
       data: {
         appId: input.appId,
@@ -788,6 +823,14 @@ export class PrismaPlatformRepository implements PlatformRepository {
   }
 
   async saveProposal(input: SaveProposalInput): Promise<ProposalRecord> {
+    await requirePrismaAppOwned(this.client, input.orgId, input.appId);
+    await requirePrismaVersionOwned(
+      this.client,
+      input.orgId,
+      input.baseVersionId,
+      input.appId,
+      'Base version not found'
+    );
     const created = await this.client.aiProposal.create({
       data: {
         organizationId: input.orgId,
@@ -816,6 +859,8 @@ export class PrismaPlatformRepository implements PlatformRepository {
   }
 
   async createRelease(input: CreateReleaseInput): Promise<ReleaseRecord> {
+    await requirePrismaAppOwned(this.client, input.orgId, input.appId);
+    await requirePrismaVersionOwned(this.client, input.orgId, input.appVersionId, input.appId);
     const created = await this.client.release.create({
       data: {
         appId: input.appId,
@@ -834,6 +879,7 @@ export class PrismaPlatformRepository implements PlatformRepository {
     appId: string,
     environment: PlatformEnvironment
   ): Promise<ReleaseRecord | undefined> {
+    await requirePrismaAppOwned(this.client, orgId, appId);
     const release = await this.client.release.findFirst({
       where: {
         appId,
@@ -847,6 +893,7 @@ export class PrismaPlatformRepository implements PlatformRepository {
   }
 
   async listReleases(orgId: string, appId: string): Promise<ReleaseRecord[]> {
+    await requirePrismaAppOwned(this.client, orgId, appId);
     const releases = await this.client.release.findMany({
       where: { appId, appVersion: { app: { organizationId: orgId } } },
       orderBy: { releaseNumber: 'asc' }
@@ -924,6 +971,7 @@ export class PrismaPlatformRepository implements PlatformRepository {
   }
 
   async createDataRecord(input: CreateDataRecordInput): Promise<DataRecord> {
+    await requirePrismaAppOwned(this.client, input.orgId, input.appId);
     const timestamp = now();
     const created = await this.client.integration.create({
       data: {

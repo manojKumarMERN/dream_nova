@@ -658,6 +658,7 @@ export const BUILDER_COMPONENT_CONTRACTS: readonly ComponentContract[] = [
     description: 'A masked password field',
     icon: 'lock',
     properties: {
+      name: { type: 'string', minLength: 1 },
       label: { type: 'string', minLength: 1 },
       placeholder: { type: 'string' },
       minLength: { type: 'integer', minimum: 0 },
@@ -666,6 +667,7 @@ export const BUILDER_COMPONENT_CONTRACTS: readonly ComponentContract[] = [
     },
     required: ['label'],
     defaults: {
+      name: '',
       label: 'Password',
       placeholder: '',
       minLength: 8,
@@ -673,7 +675,7 @@ export const BUILDER_COMPONENT_CONTRACTS: readonly ComponentContract[] = [
       required: true
     },
     contentFields: ['label', 'placeholder'],
-    behaviorFields: ['minLength', 'showToggle', 'required'],
+    behaviorFields: ['name', 'minLength', 'showToggle', 'required'],
     events: { change: CHANGE_EVENT },
     capabilities: ['data-entry', 'interaction'],
     constraints: {}

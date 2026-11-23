@@ -6,6 +6,13 @@ import { componentNodeSchema } from './component-node';
 import { deploymentConfigSchema } from './deployment';
 import { integrationReferenceSchema } from './integration';
 import { accessPolicySchema } from './access-policy';
+import {
+  dataBindingDefinitionSchema,
+  dataPermissionDefinitionSchema,
+  dataQueryDefinitionSchema,
+  dataSchemaVersionSchema,
+  dataSourceDefinitionSchema
+} from './data-engine-spec';
 import { dataModelDefinitionSchema } from './data-model';
 import { pageDefinitionSchema } from './page';
 import { platformTargetSchema } from './targets';
@@ -25,6 +32,11 @@ export const appDefinitionSchema = z.object({
   pages: z.array(pageDefinitionSchema).min(1),
   components: z.array(componentNodeSchema).min(1),
   dataModels: z.array(dataModelDefinitionSchema).default([]),
+  dataSchemaVersion: dataSchemaVersionSchema.optional(),
+  dataSources: z.array(dataSourceDefinitionSchema).optional(),
+  queries: z.array(dataQueryDefinitionSchema).optional(),
+  dataBindings: z.array(dataBindingDefinitionSchema).optional(),
+  dataPermissions: z.array(dataPermissionDefinitionSchema).optional(),
   integrations: z.array(integrationReferenceSchema).default([]),
   accessPolicies: z.array(accessPolicySchema).default([]),
   workflows: z.array(workflowDefinitionSchema).default([]),

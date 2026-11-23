@@ -175,7 +175,7 @@ export const BUILT_IN_COMPONENT_CONTRACTS: readonly ComponentContract[] = [
     slots: {
       fields: {
         description: 'Form field components',
-        allows: ['nova.text-input'],
+        allows: ['nova.text-input', 'nova.password-input'],
         multiple: true
       }
     },
@@ -185,7 +185,7 @@ export const BUILT_IN_COMPONENT_CONTRACTS: readonly ComponentContract[] = [
       web: 'nova-web/form'
     },
     constraints: {
-      allowedChildren: ['nova.text-input']
+      allowedChildren: ['nova.text-input', 'nova.password-input']
     },
     migrations: []
   },

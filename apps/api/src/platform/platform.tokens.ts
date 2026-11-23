@@ -1,2 +1,3 @@
 export const PLATFORM_REPOSITORY = Symbol('PLATFORM_REPOSITORY');
 export const PROPOSAL_GENERATOR = Symbol('PROPOSAL_GENERATOR');
+export const DATA_STORE = Symbol('DATA_STORE');

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { ComponentContract } from '@nova/contracts';
 import { BUILT_IN_COMPONENT_CONTRACTS } from '@nova/component-registry';
+import type { DataEnvironment } from './sdk';
 import { loadAppDefinition, listApps, loadVersions, saveApp } from './sdk';
 import { createSession } from './session';
 import type {
@@ -14,6 +15,22 @@ import type {
 import type { AppDefinition } from '@nova/spec';
 
 export type LeftTab = 'components' | 'pages' | 'assets' | 'data';
+
+export type DataStudioSection =
+  | 'overview'
+  | 'designer'
+  | 'tables'
+  | 'relationships'
+  | 'records'
+  | 'query-builder'
+  | 'sql'
+  | 'sources'
+  | 'connectors'
+  | 'migrations'
+  | 'permissions'
+  | 'logs';
+
+export type DataStudioMode = 'simple' | 'advanced';
 
 let activePageIdRef: string | undefined;
 
@@ -46,6 +63,16 @@ export interface StudioStore {
   workflowTarget: WorkflowRef | null;
   menu: { id: string; x: number; y: number } | null;
   notice: { kind: Toast['kind']; message: string; id: number } | null;
+  dataStudioSection: DataStudioSection;
+  dataStudioMode: DataStudioMode;
+  dataEnvironment: DataEnvironment;
+  dataStudioSearch: string;
+  dataStudioSidebarCollapsed: boolean;
+  setDataStudioSection: (section: DataStudioSection) => void;
+  setDataStudioMode: (mode: DataStudioMode) => void;
+  setDataEnvironment: (environment: DataEnvironment) => void;
+  setDataStudioSearch: (search: string) => void;
+  toggleDataStudioSidebar: () => void;
   setContractsReady: (ready: boolean) => void;
   setComponentContracts: (contracts: readonly ComponentContract[]) => void;
   setActivePage: (pageId: string) => void;
@@ -97,7 +124,18 @@ export const useStudioStore = create<StudioStore>((set, get) => ({
   workflowTarget: null,
   menu: null,
   notice: null,
+  dataStudioSection: 'overview',
+  dataStudioMode: 'simple',
+  dataEnvironment: 'development',
+  dataStudioSearch: '',
+  dataStudioSidebarCollapsed: false,
 
+  setDataStudioSection: (dataStudioSection) => set({ dataStudioSection }),
+  setDataStudioMode: (dataStudioMode) => set({ dataStudioMode }),
+  setDataEnvironment: (dataEnvironment) => set({ dataEnvironment }),
+  setDataStudioSearch: (dataStudioSearch) => set({ dataStudioSearch }),
+  toggleDataStudioSidebar: () =>
+    set((state) => ({ dataStudioSidebarCollapsed: !state.dataStudioSidebarCollapsed })),
   setContractsReady: (ready) => set({ contractsReady: ready }),
   setComponentContracts: (contracts) => set({ componentContracts: contracts }),
   setActivePage: (pageId) => {

@@ -49,7 +49,11 @@ export type {
 } from './telemetry';
 export { createRuntimeModel } from './runtime-model';
 export { RuntimeEngine, createRuntimeEngine } from './runtime-engine';
-export type { CreateRuntimeEngineOptions, RuntimeEngineEvent } from './runtime-engine';
+export type {
+  CreateRuntimeEngineOptions,
+  RuntimeDataAccess,
+  RuntimeEngineEvent
+} from './runtime-engine';
 export { RuntimeStateStore, createEmptyFormState, createInitialRuntimeState } from './state';
 export type {
   RuntimeComponentState,

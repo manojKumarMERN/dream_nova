@@ -11,6 +11,8 @@ import type {
   ComponentNode
 } from '@nova/spec';
 
+export type { WorkflowDefinition, WorkflowStep } from '@nova/spec';
+
 export type Breakpoint = SpecBreakpoint;
 
 export const BREAKPOINTS: readonly Breakpoint[] = ['desktop', 'tablet', 'mobile'];
@@ -54,7 +56,7 @@ export interface InspectorContract {
   icon?: string;
   propsSchema: Record<string, unknown>;
   defaults: Record<string, unknown>;
-  events: Record<string, { description: string }>;
+  events: Record<string, { description: string; payloadSchema?: unknown }>;
   slots: Record<string, { allows?: string[]; multiple: boolean }>;
   inspector?: InspectorGroup[];
   readiness: 'core' | 'progressive';
@@ -67,17 +69,6 @@ export interface DropTarget {
   slot: string;
   index: number;
   pageId?: string;
-}
-
-export interface WorkflowStep {
-  id: string;
-  kind: 'trigger' | 'condition' | 'action' | 'error';
-  type: string;
-  params: Record<string, unknown>;
-}
-
-export interface WorkflowDefinition {
-  steps: WorkflowStep[];
 }
 
 export interface WorkflowRef {
@@ -139,7 +130,7 @@ export interface EditorSessionLike {
   resizeNode(id: string, layout: ComponentLayout): void;
   setBreakpointOverride(id: string, layout: ComponentLayout | null): void;
   bindProp(id: string, prop: string, binding: Binding | null): void;
-  setWorkflowEvent(id: string, eventName: string, workflow: WorkflowDefinition): void;
+  setWorkflowEvent(id: string, eventName: string, workflowId: string | null): void;
   setHidden(id: string, hidden: boolean): void;
   renameNode(id: string, name: string): void;
   duplicateNode(id: string): string | undefined;

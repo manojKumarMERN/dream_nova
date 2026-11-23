@@ -30,10 +30,10 @@ The canonical input/output of the platform is a versioned `AppDefinition` owned 
 | `@nova/errors`                               | Stable error codes and `NovaError`                                      | Implemented                                 |
 | `@nova/logging`                              | Structured JSON logs and redaction                                      | Implemented                                 |
 | `@nova/config`                               | Validated environment configuration                                     | Implemented                                 |
-| `@nova/spec`                                 | Versioned application definition, schemas, fixtures, migrations         | Implemented; builder fields added           |
+| `@nova/spec`                                 | Versioned application definition, schemas, fixtures, migrations         | Implemented; builder and workflow fields    |
 | `@nova/contracts`                            | Component/event/slot/capability contract types                          | Implemented; builder contract fields added  |
 | `@nova/component-registry`                   | Immutable versioned registry and built-in web contracts                 | Implemented; full builder contracts         |
-| `@nova/spec-validator`                       | Schema, reference, compatibility, and prop validation                   | Implemented                                 |
+| `@nova/spec-validator`                       | Schema, reference, compatibility, prop, and workflow graph validation   | Implemented                                 |
 | `@nova/proposal-model`                       | Semantic change operations, risk classification, approval gate, apply   | Implemented; full builder operations        |
 | `@nova/runtime-core`                         | Shared runtime model and component resolution                           | Implemented                                 |
 | `@nova/web-runtime`                          | React web renderer and runtime model                                    | Implemented                                 |
@@ -47,7 +47,7 @@ The canonical input/output of the platform is a versioned `AppDefinition` owned 
 | `@nova/api`                                  | NestJS control plane with platform, runtime, registry, and AI endpoints | Implemented                                 |
 | `@nova/sdk`                                  | Typed control-plane client                                              | Implemented; full typed platform methods    |
 | `@nova/worker`                               | BullMQ worker host with real system health job handling                 | Implemented                                 |
-| `@nova/editor` (`apps/editor`)               | Drag-and-drop visual builder                                            | Implemented                                 |
+| `@nova/editor` (`apps/editor`)               | Drag-and-drop visual builder and event workflow designer                | Implemented                                 |
 | `@nova/web-runtime-app` (`apps/web-runtime`) | Host for published runtime payloads                                     | Implemented                                 |
 
 ## Dependency rules
@@ -91,11 +91,35 @@ AI and editor changes use the same path:
 
 AI never receives write credentials and never calls the apply function directly from a provider adapter.
 
+## Data Engine stage 1
+
+The expanded Data Engine specification is tracked in [DATA_ENGINE_AUDIT.md](DATA_ENGINE_AUDIT.md). Stage 1 confirmed that `@nova/spec` remains canonical and that the existing data store, migration planner, query engine, API, SDK, and runtime adapter form the baseline. Stage 2 added the React Flow visual designer and the first Data Studio shell in the editor Data tab. Data Studio currently exposes overview, designer, tables, relationships, records, query builder, Nova-managed data sources, migrations, and permissions, with explicit unavailable states for SQL editing, connectors, and logs. Dynamic relational DDL, SQL execution, provider connectors, external databases/REST connectors, field/record policies, query history, and connector security controls remain staged work.
+
+Stage 1 decisions are recorded in:
+
+- [ADR-0013](adr/0013-canonical-data-schema.md): canonical Data Engine schema extension.
+- [ADR-0014](adr/0014-hybrid-storage-isolation.md): hybrid storage and isolation strategy.
+- [ADR-0015](adr/0015-react-flow-database-designer.md): React Flow database designer.
+- [ADR-0016](adr/0016-sql-editor-safety.md): SQL editor and SQL safety.
+- [ADR-0017](adr/0017-data-provider-contract.md): data provider and connector contract.
+- [ADR-0018](adr/0018-migration-safety.md): migration safety.
+- [ADR-0019](adr/0019-data-security-boundaries.md): data security boundaries.
+- [ADR-0020](adr/0020-data-studio-information-architecture.md): Data Studio information architecture.
+
+## Event workflow designer
+
+The editor Inspector opens the event workflow designer for component event bindings. The designer edits canonical `definition.workflows` through `@nova/spec`, uses `validateWorkflowEventGraph(...)` from `@nova/spec-validator`, and persists graph changes through the existing editor session, save, and publish flow. Canvas positions and UI state remain separate from canonical workflow data.
+
+Workflow nodes represent `rise`, `listen`, and `riseListen` steps. Outcome branches (`success`, `failure`, `warning`) are semantic edges with stable IDs, not decorative nodes. `riseListen` configuration stores incoming identifiers, correlation keys, request/response payload mappings, timeout, retry policy, and success/failure handling. Payload mappings remain strings validated with supported path prefixes (`event.`, `payload.`, `data.`, `state.`, `form.`); the designer does not execute arbitrary JavaScript.
+
+Backend event execution and runtime branch dispatch are not implemented. The designer reports this as an explicit dependency/unavailable state and does not present simulated executions as successful. Runtime payloads preserve canonical workflows for future execution support.
+
 ## Deferred work
 
 - Expo/Tauri renderers
 - Deployment and hosting services
 - Marketplace services
 - Full integration tests against Postgres and Redis
+- Backend event execution and runtime workflow branch dispatch
 
 Deferred modules are intentionally absent rather than stubbed.

@@ -2,9 +2,18 @@ import { useEffect, useMemo, useState } from 'react';
 import { builtInComponentRegistry } from '@nova/component-registry';
 import type { ComponentContract } from '@nova/contracts';
 import { BrowserNavigationAdapter, createRuntimeEngine } from '@nova/runtime-core';
-import { createMinimalAppDefinition } from '@nova/spec';
+import { createFormValidationAppDefinition } from '@nova/spec';
 import type { AppDefinition } from '@nova/spec';
 import { WebRuntimeApp } from '@nova/web-runtime';
+import {
+  LuActivity,
+  LuLayoutDashboard,
+  LuMonitor,
+  LuSmartphone,
+  LuSparkles,
+  LuTablet
+} from 'react-icons/lu';
+import { createWebRuntimeDataAccess } from './data-access';
 import { loadRuntimeContracts, loadRuntimeDefinition } from './runtime';
 import { BREAKPOINTS } from './types';
 import type { Breakpoint } from './types';
@@ -13,7 +22,9 @@ const FALLBACK_CONTRACTS = builtInComponentRegistry.list();
 
 export default function App() {
   const slug = new URLSearchParams(window.location.search).get('app') ?? '';
-  const [definition, setDefinition] = useState<AppDefinition>(() => createMinimalAppDefinition());
+  const [definition, setDefinition] = useState<AppDefinition>(() =>
+    createFormValidationAppDefinition()
+  );
   const [contracts, setContracts] = useState<readonly ComponentContract[]>([]);
   const [breakpoint, setBreakpoint] = useState<Breakpoint>('desktop');
   const [status, setStatus] = useState(slug ? 'Loading…' : 'Local development fallback');
@@ -51,7 +62,7 @@ export default function App() {
       })
       .catch(() => {
         if (active) {
-          setDefinition(createMinimalAppDefinition());
+          setDefinition(createFormValidationAppDefinition());
           setStatus(`Fallback for ${slug}`);
         }
       });
@@ -66,6 +77,7 @@ export default function App() {
         contracts: contracts.length > 0 ? contracts : FALLBACK_CONTRACTS,
         navigation: new BrowserNavigationAdapter(),
         initialPath: `${window.location.pathname}${window.location.search}`,
+        dataAccess: createWebRuntimeDataAccess(definition.appId),
         onEvent: (event) => setLastEvent(`${event.event} · ${event.nodeId}`),
         onError: (error) => setStatus(`Runtime error: ${error.message}`)
       }),
@@ -84,13 +96,17 @@ export default function App() {
     <div className="runtime-app">
       <header className="runtime-header">
         <div className="runtime-brand">
-          <span className="runtime-mark">N</span>
+          <span className="runtime-mark">
+            <LuSparkles aria-hidden="true" size={14} />
+          </span>
           <span>NOVA Runtime</span>
         </div>
         <div className="runtime-meta">
+          <LuLayoutDashboard aria-hidden="true" size={13} />
           <strong>{definition.name}</strong>
           <span>{slug || 'local'}</span>
           <span className={`runtime-status${status.startsWith('Loaded') ? ' ok' : ''}`}>
+            <LuActivity aria-hidden="true" size={12} />
             {status}
           </span>
         </div>
@@ -103,7 +119,14 @@ export default function App() {
               aria-label={`${value} viewport`}
               onClick={() => setBreakpoint(value)}
             >
-              {value}
+              {value === 'desktop' ? (
+                <LuMonitor aria-hidden="true" size={13} />
+              ) : value === 'tablet' ? (
+                <LuTablet aria-hidden="true" size={13} />
+              ) : (
+                <LuSmartphone aria-hidden="true" size={13} />
+              )}
+              <span>{value}</span>
             </button>
           ))}
         </div>
@@ -112,8 +135,12 @@ export default function App() {
         <WebRuntimeApp {...runtimeProps} />
       </main>
       <footer className="runtime-footer">
-        <span>Breakpoint: {breakpoint}</span>
-        <span>Last event: {lastEvent || 'none'}</span>
+        <span>
+          <LuLayoutDashboard aria-hidden="true" size={12} /> Breakpoint: {breakpoint}
+        </span>
+        <span>
+          <LuActivity aria-hidden="true" size={12} /> Last event: {lastEvent || 'none'}
+        </span>
       </footer>
     </div>
   );

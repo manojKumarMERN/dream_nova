@@ -13,6 +13,20 @@
 | Phase 6 | Mobile and desktop renderers                                   | Deferred                                                 |
 | Phase 7 | Marketplace and advanced self-hosting                          | Deferred                                                 |
 
+## NOVA Data Engine roadmap
+
+| Stage | Scope                                                            | Status                                                     |
+| ----- | ---------------------------------------------------------------- | ---------------------------------------------------------- |
+| 1     | Architecture audit, ADRs, canonical contracts, provider contract | Audit and ADRs complete; provider contract work remains    |
+| 2     | React Flow designer and Data Studio shell                        | Implemented; SQL/connectors/logs remain unavailable        |
+| 3     | Dynamic PostgreSQL engine, JSONB, DDL, RLS                       | Shared JSONB and RLS baseline implemented; DDL not present |
+| 4     | Query and relationship engine                                    | CRUD, filters, sort, pagination, expansion implemented     |
+| 5     | Advanced SQL editor                                              | Not implemented                                            |
+| 6     | External REST and database connectors                            | Not implemented                                            |
+| 7     | Enterprise hardening, audit, limits, monitoring                  | Partial baseline only                                      |
+
+Stage details and gaps are recorded in [DATA_ENGINE_AUDIT.md](DATA_ENGINE_AUDIT.md). Later stages must not be marked complete until their acceptance criteria and tests pass.
+
 ## Phase 0 deliverables
 
 - pnpm + Turborepo monorepo with strict TypeScript
@@ -50,6 +64,7 @@ Phase 0 was completed and verified before visual builder work began.
 - Full registry contracts, expanded proposal operations, in-memory/Prisma repositories, and OpenAI-compatible/template AI generation.
 - Typed SDK methods for app CRUD, versions, proposals, publish, runtime, AI proposals, and full component contracts.
 - Editor SDK usage with localStorage fallback; runtime payload mapping back to an editor-compatible definition.
+- Event workflow designer with canonical `definition.workflows`, `validateWorkflowEventGraph(...)`, stable graph IDs, runtime payload preservation, and explicit unavailable execution state.
 
 ## Phase gates
 
@@ -61,4 +76,4 @@ A phase is complete only when:
 4. Architecture documentation is updated.
 5. Changes are reviewed against phase scope.
 
-Mobile, desktop, marketplace, and complex deployment systems remain deferred; the shared specification and web runtime are now stable.
+Mobile, desktop, marketplace, backend event execution, and complex deployment systems remain deferred; the shared specification and web runtime are now stable.

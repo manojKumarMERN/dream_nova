@@ -6,18 +6,20 @@ import { useToasts } from './hooks/useToasts';
 import { loadContracts, publishApp, validateDefinition as validateDefinitionRequest } from './sdk';
 import { useStudioStore } from './store';
 import { getNode, isHidden, isLocked } from './tree';
-import type { DropTarget, EditorState, InspectorContract, Toast, WorkflowRef } from './types';
+import type { DropTarget, EditorState, InspectorContract, Toast } from './types';
 import { AiPanel } from './components/AiPanel';
 import { Canvas } from './components/Canvas';
 import { ComponentTree } from './components/ComponentTree';
 import { ContextMenu } from './components/ContextMenu';
 import type { ContextAction } from './components/ContextMenu';
+import { EventWorkflowDesigner } from './components/event-workflow/EventWorkflowDesigner';
+import { DatabaseDesigner } from './components/database-designer/DatabaseDesigner';
+import { DataStudio } from './components/data-studio/DataStudio';
 import { Icon } from './components/Icons';
 import { Inspector } from './components/Inspector';
 import { Palette } from './components/Palette';
 import { PagesPanel } from './components/PagesPanel';
 import { Toolbar } from './components/Toolbar';
-import { WorkflowEditor } from './components/WorkflowEditor';
 
 function defaultTarget(state: EditorState, contracts: readonly InspectorContract[]): DropTarget {
   const selectedId = state.selectedNodeIds[0];
@@ -70,6 +72,7 @@ export default function App() {
   const { toasts, push, dismiss } = useToasts();
   const [contracts, setContracts] = useState<readonly InspectorContract[]>(BUILT_IN_CONTRACTS);
   const [contractsLoading, setContractsLoading] = useState(true);
+  const [designerOpen, setDesignerOpen] = useState(false);
 
   const selection = useMemo(
     () =>
@@ -130,6 +133,7 @@ export default function App() {
       url.searchParams.set('app', appId);
       window.history.replaceState(null, '', url.toString());
     }
+    setDesignerOpen(false);
   }, [appId]);
 
   useEffect(() => {
@@ -305,146 +309,131 @@ export default function App() {
         }}
       />
       <div className="app-body">
-        <aside className="left-sidebar" aria-label="Library and layers">
-          <div className="sidebar-tabs" role="tablist" aria-label="Sidebar sections">
-            {(
-              [
-                ['components', 'Components', 'box'],
-                ['pages', 'Pages', 'layers'],
-                ['assets', 'Assets', 'grid'],
-                ['data', 'Data', 'database']
-              ] as const
-            ).map(([id, label, icon]) => (
-              <button
-                type="button"
-                role="tab"
-                aria-selected={leftTab === id}
-                className={leftTab === id ? 'active' : ''}
-                key={id}
-                onClick={() => store.setLeftTab(id)}
-              >
-                <Icon name={icon} size={13} />
-                <span>{label}</span>
-              </button>
-            ))}
-          </div>
-          {leftTab === 'components' ? (
-            <>
-              <Palette
-                contracts={contracts}
-                loading={contractsLoading}
-                onAdd={(type) => addComponent(type)}
-              />
-              <ComponentTree
-                state={editor}
-                contracts={contracts}
-                onSelect={(id, additive) => {
-                  const current = editor.selectedNodeIds;
-                  session.select(
-                    additive
-                      ? current.includes(id)
-                        ? current.filter((value) => value !== id)
-                        : [...current, id]
-                      : [id]
-                  );
-                }}
-                onMove={(id, target) => session.moveNode(id, target)}
-                onMoveMany={(ids, target) => session.moveNodes(ids, target)}
-                onDropComponent={(type, target) => addComponent(type, target)}
-                onRename={(id, name) => session.renameNode(id, name)}
-                onToggleHidden={(id) => session.setHidden(id, !hiddenFor(id))}
-                onToggleLock={(id) => session.toggleLock(id)}
-                onContextMenu={(id, x, y) => store.setMenu({ id, x, y })}
-              />
-            </>
-          ) : null}
-          {leftTab === 'pages' ? (
-            <PagesPanel
-              state={editor}
-              activePageId={activePageId}
-              onSelectPage={(id) => store.setActivePage(id)}
-              onAddPage={(name) => {
-                const pageId = session.addPage(name);
-                store.setActivePage(pageId);
-                push('success', `Page “${name ?? 'New page'}” added`);
-              }}
-              onRenamePage={(id, name) => session.renamePage(id, name)}
-              onRemovePage={(id) => {
-                session.removePage(id);
-                push('info', 'Page removed');
-              }}
-            />
-          ) : null}
-          {leftTab === 'assets' ? (
-            <section className="panel-section" aria-label="Assets">
-              <header className="panel-header">
-                <span>Assets</span>
-              </header>
-              <div className="panel-empty">
-                Assets are resolved from the runtime registry. No local uploads in this phase.
-              </div>
-            </section>
-          ) : null}
-          {leftTab === 'data' ? (
-            <section className="panel-section" aria-label="Data models">
-              <header className="panel-header">
-                <span>Data</span>
-                <span className="panel-count">{editor.definition.dataModels.length}</span>
-              </header>
-              <div className="data-list">
-                {editor.definition.dataModels.map((model) => (
-                  <div className="data-row" key={model.id}>
-                    <Icon name="database" size={13} />
-                    <span>{model.name}</span>
-                  </div>
-                ))}
-                {editor.definition.dataModels.length === 0 ? (
-                  <div className="panel-empty">No data models in this app.</div>
-                ) : null}
-              </div>
-            </section>
-          ) : null}
-        </aside>
-        <main className="main-area">
-          <Canvas
-            state={editor}
-            contracts={contracts}
-            runtimeContracts={componentContracts}
+        {leftTab === 'data' ? (
+          <DataStudio
+            appId={appId}
+            definition={editor.definition}
             session={session}
-            activePageId={activePageId}
-            preview={preview}
-            showGrid={showGrid}
-            zoom={zoom}
-            pan={pan}
-            onTogglePreview={() => store.setPreview(!preview)}
-            onToggleGrid={() => store.setShowGrid(!showGrid)}
-            onZoomChange={(value) => store.setZoom(value)}
-            onPanChange={(value) => store.setPan(value)}
-            onResetViewport={() => store.resetViewport()}
-            onAddPage={(name) => {
-              const pageId = session.addPage(name);
-              store.setActivePage(pageId);
-              push('success', `Page “${name ?? 'New page'}” added`);
-            }}
-            onContextMenu={(id, x, y) => store.setMenu({ id, x, y })}
+            onOpenDesigner={() => setDesignerOpen(true)}
             onToast={push}
           />
-          <WorkflowEditor
-            state={editor}
-            session={session}
-            contracts={contracts}
-            target={workflowTarget}
-            onTargetChange={(target: WorkflowRef | null) => store.setWorkflowTarget(target)}
-            onToast={(kind: Toast['kind'], message: string) => push(kind, message)}
-          />
-        </main>
-        <Inspector
-          state={editor}
-          contracts={contracts}
-          session={session}
-          onOpenWorkflow={(target) => store.setWorkflowTarget(target)}
-          onToast={(kind: Toast['kind'], message: string) => push(kind, message)}
-        />
+        ) : (
+          <>
+            <aside className="left-sidebar" aria-label="Library and layers">
+              <div className="sidebar-tabs" role="tablist" aria-label="Sidebar sections">
+                {(
+                  [
+                    ['components', 'Components', 'box'],
+                    ['pages', 'Pages', 'layers'],
+                    ['assets', 'Assets', 'grid'],
+                    ['data', 'Data', 'database']
+                  ] as const
+                ).map(([id, label, icon]) => (
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={leftTab === id}
+                    className={leftTab === id ? 'active' : ''}
+                    key={id}
+                    onClick={() => store.setLeftTab(id)}
+                  >
+                    <Icon name={icon} size={13} />
+                    <span>{label}</span>
+                  </button>
+                ))}
+              </div>
+              {leftTab === 'components' ? (
+                <>
+                  <Palette
+                    contracts={contracts}
+                    loading={contractsLoading}
+                    onAdd={(type) => addComponent(type)}
+                  />
+                  <ComponentTree
+                    state={editor}
+                    contracts={contracts}
+                    onSelect={(id, additive) => {
+                      const current = editor.selectedNodeIds;
+                      session.select(
+                        additive
+                          ? current.includes(id)
+                            ? current.filter((value) => value !== id)
+                            : [...current, id]
+                          : [id]
+                      );
+                    }}
+                    onMove={(id, target) => session.moveNode(id, target)}
+                    onMoveMany={(ids, target) => session.moveNodes(ids, target)}
+                    onDropComponent={(type, target) => addComponent(type, target)}
+                    onRename={(id, name) => session.renameNode(id, name)}
+                    onToggleHidden={(id) => session.setHidden(id, !hiddenFor(id))}
+                    onToggleLock={(id) => session.toggleLock(id)}
+                    onContextMenu={(id, x, y) => store.setMenu({ id, x, y })}
+                  />
+                </>
+              ) : null}
+              {leftTab === 'pages' ? (
+                <PagesPanel
+                  state={editor}
+                  activePageId={activePageId}
+                  onSelectPage={(id) => store.setActivePage(id)}
+                  onAddPage={(name) => {
+                    const pageId = session.addPage(name);
+                    store.setActivePage(pageId);
+                    push('success', `Page “${name ?? 'New page'}” added`);
+                  }}
+                  onRenamePage={(id, name) => session.renamePage(id, name)}
+                  onRemovePage={(id) => {
+                    session.removePage(id);
+                    push('info', 'Page removed');
+                  }}
+                />
+              ) : null}
+              {leftTab === 'assets' ? (
+                <section className="panel-section" aria-label="Assets">
+                  <header className="panel-header">
+                    <span>Assets</span>
+                  </header>
+                  <div className="panel-empty">
+                    Assets are resolved from the runtime registry. No local uploads in this phase.
+                  </div>
+                </section>
+              ) : null}
+            </aside>
+            <main className="main-area">
+              <Canvas
+                state={editor}
+                contracts={contracts}
+                runtimeContracts={componentContracts}
+                session={session}
+                activePageId={activePageId}
+                preview={preview}
+                showGrid={showGrid}
+                zoom={zoom}
+                pan={pan}
+                onTogglePreview={() => store.setPreview(!preview)}
+                onToggleGrid={() => store.setShowGrid(!showGrid)}
+                onZoomChange={(value) => store.setZoom(value)}
+                onPanChange={(value) => store.setPan(value)}
+                onResetViewport={() => store.resetViewport()}
+                onAddPage={(name) => {
+                  const pageId = session.addPage(name);
+                  store.setActivePage(pageId);
+                  push('success', `Page “${name ?? 'New page'}” added`);
+                }}
+                onContextMenu={(id, x, y) => store.setMenu({ id, x, y })}
+                onToast={push}
+              />
+            </main>
+            <Inspector
+              state={editor}
+              contracts={contracts}
+              session={session}
+              onOpenWorkflow={(target) => store.setWorkflowTarget(target)}
+              onToast={(kind: Toast['kind'], message: string) => push(kind, message)}
+            />
+          </>
+        )}
         {aiOpen ? (
           <AiPanel
             appId={appId}
@@ -455,6 +444,30 @@ export default function App() {
           />
         ) : null}
       </div>
+      {workflowTarget !== null ? (
+        <EventWorkflowDesigner
+          appId={appId}
+          contracts={contracts}
+          definition={editor.definition}
+          onClose={() => store.setWorkflowTarget(null)}
+          onSave={async () => {
+            await store.save({ label: 'Manual save' });
+          }}
+          onToast={push}
+          session={session}
+          target={workflowTarget}
+        />
+      ) : null}
+      {designerOpen ? (
+        <DatabaseDesigner
+          appId={appId}
+          definition={editor.definition}
+          session={session}
+          onClose={() => setDesignerOpen(false)}
+          onSave={() => store.save({ label: 'Manual save' })}
+          onToast={push}
+        />
+      ) : null}
       {menu !== null ? (
         <ContextMenu
           x={menu.x}

@@ -13,6 +13,7 @@ const packageNames = [
   'auth',
   'tenant',
   'db',
+  'data-engine',
   'queue',
   'sdk',
   'ai-core',
@@ -36,7 +37,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['**/*.spec.ts', '**/*.spec.tsx'],
-    exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**'],
+    exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**', '**/*.db.spec.ts'],
     passWithNoTests: true
   }
 });

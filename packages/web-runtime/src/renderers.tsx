@@ -7,6 +7,33 @@ import {
   type ReactElement,
   type ReactNode
 } from 'react';
+import type { IconType } from 'react-icons';
+import {
+  LuActivity,
+  LuArrowRight,
+  LuBell,
+  LuCheck,
+  LuChevronDown,
+  LuChevronLeft,
+  LuChevronRight,
+  LuCircleAlert,
+  LuCircleCheck,
+  LuCircleHelp,
+  LuDownload,
+  LuFileText,
+  LuInfo,
+  LuLink2,
+  LuList,
+  LuLoaderCircle,
+  LuMail,
+  LuMenu,
+  LuPlus,
+  LuSearch,
+  LuSparkles,
+  LuTrash2,
+  LuUpload,
+  LuX
+} from 'react-icons/lu';
 import type { RuntimeNode } from '@nova/runtime-core';
 import {
   emptyRuntimeRenderContext,
@@ -101,6 +128,58 @@ function numberValue(node: RuntimeNode, key: string, fallback: number): number {
     if (Number.isFinite(parsed)) {
       return parsed;
     }
+  }
+  return fallback;
+}
+
+const RUNTIME_ICONS: Record<string, IconType> = {
+  activity: LuActivity,
+  'arrow-right': LuArrowRight,
+  bell: LuBell,
+  check: LuCheck,
+  'chevron-down': LuChevronDown,
+  'chevron-left': LuChevronLeft,
+  'chevron-right': LuChevronRight,
+  'circle-alert': LuCircleAlert,
+  'circle-check': LuCircleCheck,
+  'circle-help': LuCircleHelp,
+  download: LuDownload,
+  error: LuCircleAlert,
+  file: LuFileText,
+  help: LuCircleHelp,
+  info: LuInfo,
+  link: LuLink2,
+  list: LuList,
+  loader: LuLoaderCircle,
+  mail: LuMail,
+  menu: LuMenu,
+  plus: LuPlus,
+  search: LuSearch,
+  sparkles: LuSparkles,
+  success: LuCircleCheck,
+  trash: LuTrash2,
+  upload: LuUpload,
+  warning: LuCircleAlert,
+  x: LuX
+};
+
+function RuntimeIcon({
+  name,
+  size = 14,
+  className
+}: {
+  name: string;
+  size?: number;
+  className?: string | undefined;
+}) {
+  const Component = RUNTIME_ICONS[name.toLowerCase()] ?? LuSparkles;
+  return <Component aria-hidden="true" className={className} size={size} />;
+}
+
+function nodeIcon(node: RuntimeNode, fallback?: string): string | undefined {
+  const configured = text(node, 'icon');
+  if (configured !== '') {
+    return configured;
   }
   return fallback;
 }
@@ -221,19 +300,35 @@ interface SelectOption {
   href: string;
 }
 
-function selectOptions(value: unknown): SelectOption[] {
-  if (!Array.isArray(value)) {
-    return [];
+function dataArray(value: unknown): unknown[] {
+  if (Array.isArray(value)) {
+    return value;
   }
-  return value.map((item) => {
+  if (isRecord(value)) {
+    if (Array.isArray(value.rows)) {
+      return value.rows;
+    }
+    if (Array.isArray(value.records)) {
+      return value.records;
+    }
+    if (Array.isArray(value.items)) {
+      return value.items;
+    }
+  }
+  return [];
+}
+
+function selectOptions(value: unknown): SelectOption[] {
+  return dataArray(value).map((item) => {
     if (typeof item === 'string' || typeof item === 'number') {
       const optionValue = String(item);
       return { label: optionValue, value: optionValue, href: optionValue };
     }
     if (isRecord(item)) {
-      const optionValue = item.value ?? item.key ?? item.href ?? item.label ?? '';
+      const optionValue =
+        item.value ?? item.key ?? item.id ?? item.href ?? item.label ?? item.name ?? '';
       return {
-        label: String(item.label ?? item.text ?? item.name ?? optionValue),
+        label: String(item.label ?? item.text ?? item.name ?? item.title ?? optionValue),
         value: String(optionValue),
         href: String(item.href ?? optionValue)
       };
@@ -243,7 +338,19 @@ function selectOptions(value: unknown): SelectOption[] {
 }
 
 function dataRows(value: unknown): Record<string, unknown>[] {
-  return Array.isArray(value) ? value.filter(isRecord) : [];
+  return dataArray(value).filter(isRecord);
+}
+
+function dataColumns(value: unknown, rows: readonly Record<string, unknown>[]): SelectOption[] {
+  const configured = selectOptions(value);
+  if (configured.length > 0 || rows.length === 0) {
+    return configured;
+  }
+  return Array.from(new Set(rows.flatMap((row) => Object.keys(row)))).map((key) => ({
+    label: key,
+    value: key,
+    href: key
+  }));
 }
 
 function chartPoints(value: unknown): Array<{ label: string; value: number }> {
@@ -301,23 +408,27 @@ export const TextRenderer: RuntimeRenderer = ({ node, children }) => (
   </span>
 );
 
-export const ButtonRenderer: RuntimeRenderer = ({ node, onEvent, children }) => (
-  <button
-    {...shellProps(node, 'button')}
-    type={
-      text(node, 'type', 'button') === 'submit'
-        ? 'submit'
-        : text(node, 'type') === 'reset'
-          ? 'reset'
-          : 'button'
-    }
-    disabled={bool(node, 'disabled') || bool(node, 'loading')}
-    onClick={() => emit(node, onEvent, 'click', {})}
-  >
-    {children}
-    {readText(node, ['label', 'text', 'content'], 'Button')}
-  </button>
-);
+export const ButtonRenderer: RuntimeRenderer = ({ node, onEvent, children }) => {
+  const icon = nodeIcon(node);
+  return (
+    <button
+      {...shellProps(node, 'button')}
+      type={
+        text(node, 'type', 'button') === 'submit'
+          ? 'submit'
+          : text(node, 'type') === 'reset'
+            ? 'reset'
+            : 'button'
+      }
+      disabled={bool(node, 'disabled') || bool(node, 'loading')}
+      onClick={() => emit(node, onEvent, 'click', {})}
+    >
+      {icon === undefined ? null : <RuntimeIcon name={icon} />}
+      {children}
+      {readText(node, ['label', 'text', 'content'], 'Button')}
+    </button>
+  );
+};
 
 export const TextInputRenderer = inputRenderer('text-input', 'text');
 
@@ -345,7 +456,9 @@ export const GridRenderer: RuntimeRenderer = ({ node, children }) => (
 export const SectionRenderer: RuntimeRenderer = ({ node, children }) => (
   <section {...shellProps(node, 'section')}>
     {text(node, 'title') === '' ? null : (
-      <h3 className="nova-section-title">{text(node, 'title')}</h3>
+      <h3 className="nova-section-title">
+        <RuntimeIcon name={nodeIcon(node, 'sparkles') ?? 'sparkles'} /> {text(node, 'title')}
+      </h3>
     )}
     {text(node, 'subtitle') === '' ? null : (
       <p className="nova-section-subtitle">{text(node, 'subtitle')}</p>
@@ -404,11 +517,14 @@ export const ImageRenderer: RuntimeRenderer = ({ node }) => (
   />
 );
 
-export const IconRenderer: RuntimeRenderer = ({ node }) => (
-  <span {...shellProps(node, 'icon')} aria-hidden="true">
-    {readText(node, ['name', 'content', 'label'])}
-  </span>
-);
+export const IconRenderer: RuntimeRenderer = ({ node }) => {
+  const name = readText(node, ['name', 'content', 'label']);
+  return (
+    <span {...shellProps(node, 'icon')} aria-hidden="true">
+      {name === '' ? null : <RuntimeIcon name={name} />}
+    </span>
+  );
+};
 
 export const DividerRenderer: RuntimeRenderer = ({ node }) => (
   <hr {...shellProps(node, 'divider')} />
@@ -420,6 +536,7 @@ export const CardRenderer: RuntimeRenderer = ({ node, children }) => (
 
 export const BadgeRenderer: RuntimeRenderer = ({ node, children }) => (
   <span {...shellProps(node, 'badge')}>
+    <RuntimeIcon name={nodeIcon(node, 'sparkles') ?? 'sparkles'} size={12} />
     {children}
     {readText(node, ['text', 'label', 'content'])}
   </span>
@@ -496,6 +613,7 @@ export const SelectRenderer: RuntimeRenderer = ({ node, onEvent }) => {
           </option>
         ))}
       </select>
+      {multiple ? null : <RuntimeIcon name="chevron-down" size={13} />}
       {error === undefined ? null : <span className="nova-field-error">{error}</span>}
     </label>
   );
@@ -547,6 +665,7 @@ export const DatePickerRenderer = inputRenderer('date-picker', 'date');
 
 export const FileUploadRenderer: RuntimeRenderer = ({ node, onEvent }) => (
   <label {...shellProps(node, 'file-upload')}>
+    <RuntimeIcon name="upload" />
     {text(node, 'label') === '' ? null : (
       <span className="nova-input-label">{text(node, 'label')}</span>
     )}
@@ -569,6 +688,7 @@ export const FormRenderer: RuntimeRenderer = ({ node, onEvent, children, runtime
   return (
     <form
       {...shellProps(node, 'form')}
+      noValidate
       onSubmit={(event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const values: Record<string, unknown> = {};
@@ -587,20 +707,25 @@ export const FormRenderer: RuntimeRenderer = ({ node, onEvent, children, runtime
       {children}
       {form?.formErrors.map((message, index) => (
         <div key={`${String(index)}-${message}`} className="nova-form-error" role="alert">
-          {message}
+          <RuntimeIcon name="circle-alert" size={13} /> {message}
         </div>
       ))}
       {form?.failure === undefined ? null : (
         <div className="nova-form-failure" role="alert">
-          {form.failure}
+          <RuntimeIcon name="circle-alert" size={13} /> {form.failure}
         </div>
       )}
       {form?.success === undefined ? null : (
         <div className="nova-form-success" role="status">
-          {form.success}
+          <RuntimeIcon name="circle-check" size={13} /> {form.success}
         </div>
       )}
       <button type="submit" disabled={loading}>
+        <RuntimeIcon
+          name={loading ? 'loader' : 'arrow-right'}
+          className={loading ? 'nova-spin' : undefined}
+          size={13}
+        />
         {loading ? text(node, 'loadingLabel', 'Working…') : text(node, 'submitLabel', 'Submit')}
       </button>
     </form>
@@ -618,6 +743,7 @@ export const LinkRenderer: RuntimeRenderer = ({ node, onEvent, children }) => {
       {...(external ? { rel: 'noopener noreferrer' } : {})}
       onClick={() => emit(node, onEvent, 'navigate', { href: text(node, 'href', '#') })}
     >
+      <RuntimeIcon name={external ? 'link' : 'arrow-right'} size={13} />
       {children}
       {text(node, 'label')}
     </a>
@@ -632,7 +758,8 @@ export const DropdownRenderer: RuntimeRenderer = ({ node, onEvent, children }) =
       data-open={open ? 'true' : 'false'}
     >
       <button type="button" onClick={() => emit(node, onEvent, 'toggle', {})}>
-        {text(node, 'label', 'Menu')}
+        <RuntimeIcon name="menu" size={13} /> {text(node, 'label', 'Menu')}
+        <RuntimeIcon name="chevron-down" size={13} />
       </button>
       {open ? (
         <div className="nova-dropdown-panel">
@@ -672,8 +799,8 @@ export const MenuRenderer: RuntimeRenderer = ({ node, onEvent, children }) => (
 );
 
 export const DataTableRenderer: RuntimeRenderer = ({ node, onEvent }) => {
-  const columns = selectOptions(node.props.columns);
   const rows = dataRows(node.props.rows).slice(0, numberValue(node, 'pageSize', 20));
+  const columns = dataColumns(node.props.columns, rows);
   const sortable = bool(node, 'sortable', true);
   return (
     <table {...shellProps(node, 'data-table')}>
@@ -696,6 +823,7 @@ export const DataTableRenderer: RuntimeRenderer = ({ node, onEvent }) => {
                 : {})}
             >
               {column.label}
+              {sortable ? <RuntimeIcon name="chevron-down" size={12} /> : null}
             </th>
           ))}
         </tr>
@@ -726,7 +854,9 @@ export const ListRenderer: RuntimeRenderer = ({ node, onEvent, children }) => {
         </li>
       ))}
       {items.length === 0 && Children.count(children) === 0 ? (
-        <li className="nova-list-empty">{text(node, 'emptyText', 'No items')}</li>
+        <li className="nova-list-empty">
+          <RuntimeIcon name="list" size={13} /> {text(node, 'emptyText', 'No items')}
+        </li>
       ) : (
         children
       )}
@@ -739,7 +869,9 @@ export const ChartRenderer: RuntimeRenderer = ({ node, onEvent }) => {
   return (
     <div {...shellProps(node, 'chart')} role="img" aria-label={text(node, 'title', 'Chart')}>
       {text(node, 'title') === '' ? null : (
-        <strong className="nova-chart-title">{text(node, 'title')}</strong>
+        <strong className="nova-chart-title">
+          <RuntimeIcon name="activity" size={13} /> {text(node, 'title')}
+        </strong>
       )}
       <ul className="nova-chart-points">
         {points.map((point, index) => (
@@ -768,7 +900,9 @@ export const StatisticsCardRenderer: RuntimeRenderer = ({ node, onEvent }) => (
     type="button"
     onClick={() => emit(node, onEvent, 'click', {})}
   >
-    <span className="nova-statistics-label">{text(node, 'label')}</span>
+    <span className="nova-statistics-label">
+      <RuntimeIcon name="activity" size={13} /> {text(node, 'label')}
+    </span>
     <strong>{text(node, 'value')}</strong>
     {text(node, 'delta') === '' ? null : (
       <span className="nova-statistics-delta">{text(node, 'delta')}</span>
@@ -825,7 +959,9 @@ export const DataGridRenderer: RuntimeRenderer = ({ node, onEvent, children }) =
 
 export const NavbarRenderer: RuntimeRenderer = ({ node, onEvent, children }) => (
   <nav {...shellProps(node, 'navbar')}>
-    <strong className="nova-navbar-brand">{text(node, 'brand', 'NOVA')}</strong>
+    <strong className="nova-navbar-brand">
+      <RuntimeIcon name="sparkles" size={14} /> {text(node, 'brand', 'NOVA')}
+    </strong>
     <div className="nova-navbar-links">
       {selectOptions(node.props.links).map((link, index) => (
         <a
@@ -846,7 +982,9 @@ export const SidebarRenderer: RuntimeRenderer = ({ node, onEvent, children }) =>
     {...shellProps(node, 'sidebar', { width: `${String(numberValue(node, 'width', 240))}px` })}
   >
     {text(node, 'title') === '' ? null : (
-      <strong className="nova-sidebar-title">{text(node, 'title')}</strong>
+      <strong className="nova-sidebar-title">
+        <RuntimeIcon name="menu" size={13} /> {text(node, 'title')}
+      </strong>
     )}
     <ul>
       {selectOptions(node.props.items).map((item, index) => (
@@ -892,7 +1030,7 @@ export const PaginationRenderer: RuntimeRenderer = ({ node, onEvent }) => {
     <nav {...shellProps(node, 'pagination')} aria-label="Pagination">
       {bool(node, 'showSummary', true) ? (
         <span className="nova-pagination-summary">
-          Page {String(page)} of {String(count)}
+          <RuntimeIcon name="list" size={12} /> Page {String(page)} of {String(count)}
         </span>
       ) : null}
       {Array.from({ length: count }, (_, index) => index + 1).map((value) => (
@@ -921,7 +1059,7 @@ export const ModalRenderer: RuntimeRenderer = ({ node, onEvent, children }) => {
           <h2>{text(node, 'title', 'Modal')}</h2>
           {bool(node, 'closable', true) ? (
             <button type="button" onClick={() => emit(node, onEvent, 'close', {})}>
-              {text(node, 'closeLabel', 'Close')}
+              <RuntimeIcon name="x" size={13} /> {text(node, 'closeLabel', 'Close')}
             </button>
           ) : null}
         </div>
@@ -943,10 +1081,10 @@ export const DialogRenderer: RuntimeRenderer = ({ node, onEvent, children }) => 
       {children}
       <div className="nova-dialog-actions">
         <button type="button" onClick={() => emit(node, onEvent, 'cancel', {})}>
-          {text(node, 'cancelLabel', 'Cancel')}
+          <RuntimeIcon name="x" size={13} /> {text(node, 'cancelLabel', 'Cancel')}
         </button>
         <button type="button" onClick={() => emit(node, onEvent, 'confirm', {})}>
-          {text(node, 'confirmLabel', 'Confirm')}
+          <RuntimeIcon name="check" size={13} /> {text(node, 'confirmLabel', 'Confirm')}
         </button>
       </div>
     </div>
@@ -962,7 +1100,7 @@ export const DrawerRenderer: RuntimeRenderer = ({ node, onEvent, children }) => 
       <div className="nova-drawer-header">
         <h2>{text(node, 'title', 'Drawer')}</h2>
         <button type="button" onClick={() => emit(node, onEvent, 'close', {})}>
-          {text(node, 'closeLabel', 'Close')}
+          <RuntimeIcon name="x" size={13} /> {text(node, 'closeLabel', 'Close')}
         </button>
       </div>
       {children}
@@ -970,30 +1108,38 @@ export const DrawerRenderer: RuntimeRenderer = ({ node, onEvent, children }) => 
   );
 };
 
-export const ToastRenderer: RuntimeRenderer = ({ node, onEvent, children }) => (
-  <div {...shellProps(node, 'toast')} role="status">
-    {children}
-    {text(node, 'message')}
-    {bool(node, 'dismissible') ? (
-      <button type="button" onClick={() => emit(node, onEvent, 'dismiss', {})}>
-        {text(node, 'dismissLabel', 'Dismiss')}
-      </button>
-    ) : null}
-  </div>
-);
+export const ToastRenderer: RuntimeRenderer = ({ node, onEvent, children }) => {
+  const tone = text(node, 'variant', text(node, 'tone', 'info'));
+  return (
+    <div {...shellProps(node, 'toast')} role="status">
+      <RuntimeIcon name={nodeIcon(node, tone) ?? tone} />
+      {children}
+      {text(node, 'message')}
+      {bool(node, 'dismissible') ? (
+        <button type="button" onClick={() => emit(node, onEvent, 'dismiss', {})}>
+          <RuntimeIcon name="x" size={12} /> {text(node, 'dismissLabel', 'Dismiss')}
+        </button>
+      ) : null}
+    </div>
+  );
+};
 
-export const AlertRenderer: RuntimeRenderer = ({ node, onEvent, children }) => (
-  <div {...shellProps(node, 'alert')} role="alert">
-    {children}
-    {text(node, 'title') === '' ? null : <strong>{text(node, 'title')}</strong>}
-    <span>{text(node, 'message')}</span>
-    {bool(node, 'dismissible') ? (
-      <button type="button" onClick={() => emit(node, onEvent, 'dismiss', {})}>
-        {text(node, 'dismissLabel', 'Dismiss')}
-      </button>
-    ) : null}
-  </div>
-);
+export const AlertRenderer: RuntimeRenderer = ({ node, onEvent, children }) => {
+  const tone = text(node, 'variant', text(node, 'tone', 'info'));
+  return (
+    <div {...shellProps(node, 'alert')} role="alert">
+      <RuntimeIcon name={nodeIcon(node, tone) ?? tone} />
+      {children}
+      {text(node, 'title') === '' ? null : <strong>{text(node, 'title')}</strong>}
+      <span>{text(node, 'message')}</span>
+      {bool(node, 'dismissible') ? (
+        <button type="button" onClick={() => emit(node, onEvent, 'dismiss', {})}>
+          <RuntimeIcon name="x" size={12} /> {text(node, 'dismissLabel', 'Dismiss')}
+        </button>
+      ) : null}
+    </div>
+  );
+};
 
 export const TooltipRenderer: RuntimeRenderer = ({ node, children }) => (
   <span
@@ -1001,6 +1147,7 @@ export const TooltipRenderer: RuntimeRenderer = ({ node, children }) => (
     title={readText(node, ['content', 'message', 'label'])}
     data-placement={text(node, 'placement', undefined)}
   >
+    <RuntimeIcon name="circle-help" size={13} />
     {children}
     {text(node, 'label')}
   </span>
@@ -1012,7 +1159,7 @@ export const FallbackRenderer: RuntimeRenderer = ({ node, children }) => (
     {readText(node, ['label', 'content', 'text'])}
     {(node.validationIssues ?? []).map((issue, index) => (
       <div key={`${String(index)}-${issue}`} className="nova-fallback-issue" role="note">
-        {issue}
+        <RuntimeIcon name="circle-alert" size={12} /> {issue}
       </div>
     ))}
   </div>

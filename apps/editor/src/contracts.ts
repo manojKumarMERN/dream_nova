@@ -192,7 +192,17 @@ function augment(contract: ComponentContract): InspectorContract {
     ...(contract.icon === undefined ? {} : { icon: contract.icon }),
     propsSchema: contract.propsSchema as Record<string, unknown>,
     defaults: contract.defaults,
-    events: contract.events,
+    events: Object.fromEntries(
+      Object.entries(contract.events).map(([eventName, eventContract]) => [
+        eventName,
+        {
+          description: eventContract.description,
+          ...(eventContract.payloadSchema === undefined
+            ? {}
+            : { payloadSchema: eventContract.payloadSchema })
+        }
+      ])
+    ),
     slots: contract.slots,
     inspector: normalizeGroups(contract),
     readiness: PROGRESSIVE_CATEGORIES.has(contract.category) ? 'progressive' : 'core',

@@ -1,4 +1,5 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { createMinimalAppDefinition } from '@nova/spec';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
@@ -7,6 +8,39 @@ import { useStudioStore } from './store';
 const APP_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 
 vi.mock('@nova/spec', () => ({
+  createFormValidationAppDefinition: () => ({
+    schemaVersion: '1.0.0',
+    appId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    name: 'Test App',
+    targets: ['web'],
+    deployment: { model: 'nova-managed', region: 'us-east-1' },
+    backend: { mode: 'nova-managed' },
+    theme: { colors: {}, spacing: {}, typography: {} },
+    pages: [
+      {
+        id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+        name: 'Home',
+        route: '/',
+        rootNodeId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+        settings: {}
+      }
+    ],
+    components: [
+      {
+        id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+        type: 'nova.stack',
+        contractVersion: '1.0.0',
+        name: 'Root',
+        props: { direction: 'column', gap: 8 },
+        children: []
+      }
+    ],
+    dataModels: [],
+    integrations: [],
+    workflows: [],
+    accessPolicies: [],
+    metadata: { labels: {}, editorLocks: [] }
+  }),
   createMinimalAppDefinition: () => ({
     schemaVersion: '1.0.0',
     appId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -36,6 +70,7 @@ vi.mock('@nova/spec', () => ({
     ],
     dataModels: [],
     integrations: [],
+    workflows: [],
     accessPolicies: [],
     metadata: { labels: {}, editorLocks: [] }
   }),
@@ -45,6 +80,67 @@ vi.mock('@nova/spec', () => ({
 vi.mock('@nova/contracts', () => ({
   COMPONENT_CATEGORIES: ['layout', 'input', 'display', 'navigation', 'data', 'feedback', 'custom']
 }));
+
+vi.mock('@nova/spec-validator', () => ({
+  validateAppDefinition: () => ({ valid: true, issues: [] }),
+  validateWorkflowEventGraph: () => []
+}));
+
+vi.mock('@xyflow/react', () => {
+  interface MockNode {
+    id: string;
+    type: string;
+    data: Record<string, unknown>;
+    selected?: boolean;
+  }
+  interface MockEdge {
+    id: string;
+    label?: string;
+  }
+  type MockNodeComponent = (props: {
+    id: string;
+    data: Record<string, unknown>;
+    selected?: boolean;
+  }) => ReactNode;
+  interface ReactFlowProps {
+    nodes: MockNode[];
+    edges: MockEdge[];
+    nodeTypes: Record<string, MockNodeComponent>;
+  }
+  return {
+    ReactFlow: ({ nodes, edges, nodeTypes }: ReactFlowProps) => (
+      <div data-testid="react-flow">
+        {nodes.map((node) => {
+          const Node = nodeTypes[node.type];
+          return Node ? (
+            <Node key={node.id} id={node.id} data={node.data} selected={node.selected} />
+          ) : null;
+        })}
+        {edges.map((edge) => (
+          <div key={edge.id}>{String(edge.label)}</div>
+        ))}
+      </div>
+    ),
+    ReactFlowProvider: ({ children }: { children: ReactNode }) => children,
+    Background: () => null,
+    Controls: () => null,
+    MiniMap: () => null,
+    Handle: ({ id, type }: { id: string; type: string }) => (
+      <div data-handle-id={id} data-handle-type={type} />
+    ),
+    Position: { Left: 'left', Right: 'right' },
+    MarkerType: { ArrowClosed: 'arrowclosed' },
+    useReactFlow: () => ({
+      fitView: () => undefined,
+      screenToFlowPosition: (point: { x: number; y: number }) => point,
+      zoomIn: () => undefined,
+      zoomOut: () => undefined,
+      getNodes: () => [],
+      getNode: () => undefined
+    }),
+    useViewport: () => ({ x: 0, y: 0, zoom: 1 })
+  };
+});
 
 vi.mock('@nova/component-registry', () => {
   const contract = (
@@ -91,7 +187,7 @@ interface MockNode {
   name?: string;
   props: Record<string, unknown>;
   children?: MockNode[];
-  events?: Record<string, unknown>;
+  events?: Record<string, { action?: string; params?: Record<string, unknown> }>;
 }
 
 interface MockDefinition {
@@ -139,6 +235,14 @@ vi.mock('@nova/sdk', () => ({
     };
     listVersions = async () => versions;
     getVersion = async (id: string) => versions.find((version) => version.id === id);
+    planDataMigration = async () => ({
+      fromVersion: 'draft',
+      toVersion: 'current',
+      operations: [],
+      destructive: false,
+      impacts: []
+    });
+    applyDataMigration = async () => undefined;
     publish = async () => undefined;
     getRuntime = async () => undefined;
     constructor() {}
@@ -237,15 +341,21 @@ vi.mock('@nova/editor-core', () => {
           }),
         setBreakpointOverride: () => undefined,
         bindProp: () => undefined,
-        setWorkflowEvent: (id: string, event: string, workflow: { steps: unknown[] }) =>
+        setWorkflowEvent: (id: string, event: string, workflowId: string | null) =>
           update((current) => {
             const next = clone(current.definition);
             const node = find(next.components, id);
             if (node) {
-              node.events = {
-                ...node.events,
-                [event]: { action: 'runWorkflow', params: { steps: workflow.steps } }
-              };
+              if (workflowId === null) {
+                const events = { ...(node.events ?? {}) };
+                delete events[event];
+                node.events = events;
+              } else {
+                node.events = {
+                  ...node.events,
+                  [event]: { action: 'runWorkflow', params: { workflowId } }
+                };
+              }
             }
             return { ...current, definition: next };
           }),
@@ -282,7 +392,11 @@ vi.mock('@nova/runtime-core', () => ({
     breakpoint: options.breakpoint,
     data: {},
     resolveProps: (node: { props: unknown }) => node.props
-  })
+  }),
+  createRuntimeEngine: () => ({ dispose: () => undefined }),
+  MemoryNavigationAdapter: class {
+    constructor(public readonly route: string) {}
+  }
 }));
 
 vi.mock('@nova/web-runtime', () => ({
@@ -352,5 +466,55 @@ describe('editor palette and tree', () => {
     });
     expect(versions).toHaveLength(1);
     expect(window.location.search).toContain(`app=${APP_ID}`);
+  });
+
+  it('opens and closes the visual database designer from the data tab', () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Data' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open designer' }));
+
+    expect(screen.getByRole('dialog', { name: 'Database designer' })).toBeTruthy();
+    expect(screen.getByTestId('react-flow')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close designer' }));
+
+    expect(screen.queryByRole('dialog', { name: 'Database designer' })).toBeNull();
+  });
+
+  it('opens the event workflow designer and saves a canonical workflow', async () => {
+    render(<App />);
+
+    act(() => {
+      useStudioStore.getState().setWorkflowTarget({
+        nodeId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+        eventName: 'click'
+      });
+    });
+
+    expect(screen.getByRole('dialog', { name: 'Event workflow designer' })).toBeTruthy();
+    expect(document.querySelectorAll('[data-node-id]')).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Rise Event' }));
+
+    expect(document.querySelectorAll('[data-node-id]')).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save workflow' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Saved version-1')).toBeTruthy();
+    });
+    expect(versions).toHaveLength(1);
+
+    const savedDefinition = versions[0]?.definition as {
+      workflows?: Array<{ id: string; name: string; graph?: { nodes: unknown[] } }>;
+      components: MockNode[];
+    };
+    expect(savedDefinition.workflows).toHaveLength(1);
+    expect(savedDefinition.workflows?.[0]?.name).toBe('click workflow');
+    expect(savedDefinition.workflows?.[0]?.graph?.nodes).toHaveLength(2);
+    expect(savedDefinition.components[0]?.events?.click?.params).toEqual({
+      workflowId: savedDefinition.workflows?.[0]?.id
+    });
   });
 });

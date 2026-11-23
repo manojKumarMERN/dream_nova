@@ -11,20 +11,26 @@
     "test": "vitest run --config vite.config.ts"
   },
   "dependencies": {
+    "@dagrejs/dagre": "^3.1.3",
     "@nova/component-registry": "workspace:*",
     "@nova/contracts": "workspace:*",
     "@nova/editor-core": "workspace:*",
     "@nova/runtime-core": "workspace:*",
     "@nova/sdk": "workspace:*",
     "@nova/spec": "workspace:*",
+    "@nova/spec-validator": "workspace:*",
     "@nova/web-runtime": "workspace:*",
+    "@xyflow/react": "^13.0.2",
+    "d3-force": "^3.0.1",
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-icons": "^5.7.0",
     "zustand": "^5.1.0"
   },
   "devDependencies": {
     "@testing-library/react": "^16.1.0",
+    "@types/d3-force": "^3.0.10",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^5.0.4",

@@ -4,16 +4,17 @@ PostgreSQL is the system of record for platform metadata and version history. Ap
 
 ## Domains
 
-| Domain        | Models                                      | Notes                                                      |
-| ------------- | ------------------------------------------- | ---------------------------------------------------------- |
-| Identity      | `User`, `Membership`                        | Organization-scoped roles.                                 |
-| Organizations | `Organization`                              | Tenant root; all tenant data references it.                |
-| Applications  | `App`, `AppVersion`, `AppEnvironment`       | `AppVersion` is immutable by service convention.           |
-| Registry      | `ComponentContractVersion`, `SpecMigration` | Versioned compatibility metadata.                          |
-| AI            | `AiConversation`, `AiProposal`, `Approval`  | Proposals are stored before apply; approvals are explicit. |
-| Releases      | `Release`, `BuildArtifact`                  | Artifacts reference storage keys, not raw files.           |
-| Integrations  | `Integration`                               | `secretRef` stores a reference, never a raw secret.        |
-| Audit         | `AuditLog`                                  | Actor, action, resource, request ID, and metadata.         |
+| Domain        | Models                                               | Notes                                                      |
+| ------------- | ---------------------------------------------------- | ---------------------------------------------------------- |
+| Identity      | `User`, `Membership`                                 | Organization-scoped roles.                                 |
+| Organizations | `Organization`                                       | Tenant root; all tenant data references it.                |
+| Applications  | `App`, `AppVersion`, `AppEnvironment`                | `AppVersion` is immutable by service convention.           |
+| Registry      | `ComponentContractVersion`, `SpecMigration`          | Versioned compatibility metadata.                          |
+| AI            | `AiConversation`, `AiProposal`, `Approval`           | Proposals are stored before apply; approvals are explicit. |
+| Releases      | `Release`, `BuildArtifact`                           | Artifacts reference storage keys, not raw files.           |
+| Integrations  | `Integration`                                        | `secretRef` stores a reference, never a raw secret.        |
+| App data      | `AppDataSchema`, `AppDataRecord`, `AppDataMigration` | Shared tenant-scoped tables for app-defined data.          |
+| Audit         | `AuditLog`                                           | Actor, action, resource, request ID, and metadata.         |
 
 ## Key constraints
 
@@ -36,10 +37,12 @@ PostgreSQL is the system of record for platform metadata and version history. Ap
 
 ## Migration
 
-Initial migration:
+Migrations:
 
 ```text
 packages/db/prisma/migrations/20261118000000_init/migration.sql
+packages/db/prisma/migrations/20261118010000_app_data/migration.sql
+packages/db/prisma/migrations/20261118020000_rls_environment/migration.sql
 ```
 
 Regenerate Prisma Client with:

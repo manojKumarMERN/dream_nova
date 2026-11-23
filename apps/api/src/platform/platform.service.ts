@@ -100,6 +100,25 @@ function compileRuntimePayload(definition: AppDefinition): RuntimePayload {
     ...(definition.runtimeAccess === undefined
       ? {}
       : { runtimeAccess: { publicAccess: definition.runtimeAccess.publicAccess } }),
+    ...(definition.dataSchemaVersion === undefined
+      ? {}
+      : { dataSchemaVersion: definition.dataSchemaVersion }),
+    ...(definition.dataModels === undefined
+      ? {}
+      : { dataModels: structuredClone(definition.dataModels) }),
+    ...(definition.dataSources === undefined
+      ? {}
+      : { dataSources: structuredClone(definition.dataSources) }),
+    ...(definition.queries === undefined ? {} : { queries: structuredClone(definition.queries) }),
+    ...(definition.dataBindings === undefined
+      ? {}
+      : { dataBindings: structuredClone(definition.dataBindings) }),
+    ...(definition.dataPermissions === undefined
+      ? {}
+      : { dataPermissions: structuredClone(definition.dataPermissions) }),
+    ...(definition.workflows === undefined
+      ? {}
+      : { workflows: structuredClone(definition.workflows) }),
     pages: definition.pages.map((page) => ({
       id: page.id,
       name: page.name,
